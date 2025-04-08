@@ -1,0 +1,627 @@
+inventario/
+apps.py:
+from django.apps import AppConfig
+
+
+class InventarioConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'inventario'
+
+    def ready(self):
+        import inventario.signals# Importamos el archivo de señales
+        print("Signals cargados")
+
+models.py:
+from django.db import models
+from productos.models import Producto
+
+# Create your models here.
+class Inventario(models.Model):
+    producto = models.OneToOneField(Producto, on_delete=models.CASCADE)
+    cantidad = models.PositiveIntegerField(default=0)
+    ultima_actualizacion = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.producto} - {self.cantidad} unidades"
+
+serializers.py:
+from rest_framework import serializers
+from .models import Inventario
+
+class InventarioSerializer(serializers.ModelSerializer):
+    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
+
+    class Meta:
+        model = Inventario
+        fields = ['id', 'producto', 'producto_nombre', 'cantidad', 'ultima_actualizacion']
+
+signals.py:
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from productos.models import Producto
+from inventario.models import Inventario
+
+@receiver(post_save, sender=Producto)
+def crear_inventario_automatico(sender, instance, created, **kwargs):
+    """
+    Cuando se crea un nuevo producto, su stock inicializa el inventario.
+    """
+    if created:  # Solo al crear un nuevo producto
+        Inventario.objects.create(producto=instance, cantidad=instance.stock)
+        print(f"Inventario creado para {instance.nombre} con {instance.stock} unidades.")
+    else:
+        # Si se actualiza el producto, el inventario también se actualiza
+        inventario, _ = Inventario.objects.get_or_create(producto=instance)
+        inventario.cantidad = instance.stock
+        inventario.save()
+        print(f"Inventario actualizado para {instance.nombre} a {instance.stock} unidades.")
+
+urls.py:
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import InventarioViewSet
+
+router = DefaultRouter()
+router.register(r'inventario', InventarioViewSet)
+
+urlpatterns = [
+    path('', include(router.urls)),
+]
+
+views.py:
+from django.shortcuts import render
+from rest_framework import viewsets
+from .models import Inventario
+from .serializers import InventarioSerializer
+from rest_framework.permissions import IsAuthenticated
+
+class InventarioViewSet(viewsets.ModelViewSet):
+    queryset = Inventario.objects.all()
+    serializer_class = InventarioSerializer
+    permission_classes = [IsAuthenticated]
+
+
+
+productos/
+apps.py:
+from django.apps import AppConfig
+
+
+class ProductosConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'productos'
+
+models.py:
+from django.db import models
+
+# Create your models here.
+class Categoria(models.Model):
+    nombre = models.CharField(max_length=255)#unique=True)
+
+    def __str__(self):
+        return self.nombre
+
+class Producto(models.Model):
+    nombre = models.CharField(max_length=255)
+    descripcion = models.TextField()
+    precio = models.DecimalField(max_digits=10, decimal_places=2)
+    categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
+    stock = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return self.nombre
+      
+class Proveedor(models.Model):
+    nombre = models.CharField(max_length=255)
+    contacto = models.CharField(max_length=100)
+    telefono = models.CharField(max_length=15)
+
+    def __str__(self):
+        return self.nombre
+
+serializers.py:
+from rest_framework import serializers
+from .models import Categoria, Producto, Proveedor
+
+class CategoriaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Categoria
+        fields = '__all__'
+
+class ProductoSerializer(serializers.ModelSerializer):
+    categoria = serializers.PrimaryKeyRelatedField(queryset = Categoria.objects.all())
+
+    class Meta:
+        model = Producto
+        fields = '__all__'
+
+class ProveedorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Proveedor
+        fields = '__all__'
+
+
+urls.py:
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import CategoriaViewSet, ProductoViewSet, ProveedorViewSet
+
+router = DefaultRouter()
+router.register(r'categorias', CategoriaViewSet)
+router.register(r'productos', ProductoViewSet)
+router.register(r'proveedores', ProveedorViewSet)
+
+urlpatterns = [
+    path('', include(router.urls)),
+]
+
+
+views.py:
+from django.shortcuts import render
+from rest_framework import viewsets
+from .models import Categoria, Producto, Proveedor
+from .serializers import CategoriaSerializer, ProductoSerializer, ProveedorSerializer
+from rest_framework.permissions import IsAuthenticated, BasePermission
+from django.contrib.auth.models import Permission
+
+
+
+class IsAdminOrEmployee(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_authenticated:
+            return request.user.groups.filter(name__in=["ADMIN", "EMPLOYEE", "CLIENT"]).exists()
+        return False  # No autenticado, sin acceso
+    
+class CategoriaViewSet(viewsets.ModelViewSet):
+    queryset = Categoria.objects.all()
+    serializer_class = CategoriaSerializer
+
+class ProductoViewSet(viewsets.ModelViewSet):
+    queryset = Producto.objects.all()
+    serializer_class = ProductoSerializer
+    permission_classes = [IsAuthenticated, IsAdminOrEmployee]  #Se aplica el permiso
+
+    def get_queryset(self):
+        
+        user = self.request.user
+        if user.groups.filter(name="ADMIN").exists() or user.groups.filter(name="EMPLOYEE").exists():
+            return Producto.objects.all()  # Admins y empleados ven todo
+        elif user.groups.filter(name="CLIENT").exists():
+            return Producto.objects.all()  # Clientes ven todo, pero no pueden modificar
+        return Producto.objects.none()  # No autorizado
+    
+class ProveedorViewSet(viewsets.ModelViewSet):
+    queryset = Proveedor.objects.all()
+    serializer_class = ProveedorSerializer
+
+
+
+usuarios/
+apps.py:
+from django.apps import AppConfig
+
+
+class UsuariosConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'usuarios'
+
+    def ready(self):
+        import usuarios.signals  # Importa las señales al iniciar la app
+        print("Signals cargados")
+
+models.py:
+from django.contrib.auth.models import AbstractUser, Group, Permission
+from django.db import models
+
+class Usuario(AbstractUser):
+    
+    ADMIN = 'ADMIN'
+    EMPLOYEE = 'EMPLOYEE'
+    CLIENT = 'CLIENT'
+    
+    
+    ROLES = (
+        (ADMIN, 'Administrador'),
+        (EMPLOYEE, 'Empleado'),
+        (CLIENT, 'Cliente'),
+    )
+    rol = models.CharField(max_length=10, choices=ROLES, default='CLIENT')
+    
+    def __str__(self):
+        return f"{self.username} - {self.rol}"
+    
+
+serializers.py:
+from rest_framework import serializers
+from .models import Usuario
+
+class UsuarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Usuario
+        fields = ['id', 'username', 'email', 'rol']
+
+
+signals.py:
+
+from django.db.models.signals import post_migrate, post_save
+from django.contrib.auth.models import Group, Permission
+from django.dispatch import receiver
+from .models import Usuario
+
+@receiver(post_migrate)
+def crear_roles(sender, **kwargs):
+    """
+    Crea los grupos de usuario (roles) y asigna los permisos correspondientes después de aplicar las migraciones.
+    """
+    roles = ['ADMIN', 'EMPLOYEE', 'CLIENT']  # Usamos los mismos valores que en el modelo de Usuario
+
+    for role in roles:
+        group, created = Group.objects.get_or_create(name=role)  # Crea el grupo si no existe
+
+        # Asignar permisos específicos
+        if role == 'EMPLOYEE':
+            permisos = Permission.objects.filter(content_type__app_label='ventas')  # Ajusta 'ventas' al nombre real de tu app
+            group.permissions.set(permisos)  # Asigna permisos al grupo
+        elif role == 'CLIENT':
+            group.permissions.clear()  # Cliente no tiene permisos administrativos
+
+    print("Roles creados o actualizados correctamente.")
+
+@receiver(post_save, sender=Usuario)
+def asignar_grupo_usuario(sender, instance, created, **kwargs):
+    """
+    Asigna automáticamente un usuario al grupo correspondiente según su rol al momento de crearse.
+    """
+    if created:  # Solo al crear un nuevo usuario
+        try:
+            grupo = Group.objects.get(name=instance.rol)  # Obtiene el grupo según el rol del usuario
+            instance.groups.add(grupo)  # Asigna el grupo al usuario
+        except Group.DoesNotExist:
+            print(f"El grupo {instance.rol} no existe. Asegúrate de que los grupos fueron creados correctamente.")
+
+urls.py:
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import UsuarioViewSet
+from .views import RegistroUsuarioView, LoginView
+
+
+router = DefaultRouter()
+router.register(r'usuarios', UsuarioViewSet)
+
+urlpatterns = [
+    #path('', include(router.urls)),
+    path('register/', RegistroUsuarioView.as_view(), name='register'),
+    path('login/', LoginView.as_view(), name='login'),
+]
+
+
+
+views.py:
+from django.shortcuts import render
+from rest_framework import viewsets
+from .models import Usuario
+from .serializers import UsuarioSerializer
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth import get_user_model
+User = get_user_model()
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate
+
+
+class UsuarioViewSet(viewsets.ModelViewSet):
+    queryset = Usuario.objects.all()
+    serializer_class = UsuarioSerializer
+
+# Create your views here.
+
+
+# Generar token para un usuario
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
+
+# Vista para registrar usuarios
+class RegistroUsuarioView(APIView):
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        email = request.data.get('email')
+        rol = request.data.get('rol', 'CLIENT')  # Por defecto, Cliente
+        
+        # Asegurarse de que el username tenga un valor
+        if not username:
+            return Response({"error": "El campo 'username' es obligatorio."}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+        if User.objects.filter(username=username).exists():
+            return Response({'error': 'El usuario ya existe'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.create_user(username=username, password=password, email=email)
+        user.save()
+
+        return Response({'mensaje': 'Usuario creado correctamente'}, status=status.HTTP_201_CREATED)
+
+# Vista para iniciar sesión
+class LoginView(APIView):
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+
+        user = authenticate(username=username, password=password)
+
+        if user:
+            tokens = get_tokens_for_user(user)
+            return Response(tokens, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Credenciales inválidas'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+ventas/
+apps.py:
+from django.apps import AppConfig
+
+
+class VentasConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'ventas'
+
+
+models.py:
+from django.db import models
+from usuarios.models import Usuario
+from productos.models import Producto
+
+
+class Venta(models.Model):
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Venta {self.id} - {self.usuario.username} -Total: ${self.total}"
+    
+class Carrito(models.Model):
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)  # Relación 1:1 con el usuario
+    productos = models.ManyToManyField(Producto, through="CarritoItem")  # Relación N:M con productos
+
+    def __str__(self):
+        return f"Carrito de {self.usuario.username}"
+
+class CarritoItem(models.Model):
+    carrito = models.ForeignKey(Carrito, on_delete=models.CASCADE)
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
+    cantidad = models.PositiveIntegerField(default=1)
+
+    def subtotal(self):
+        return self.cantidad * self.producto.precio
+
+    def __str__(self):
+        return f"{self.cantidad} x {self.producto.nombre} en carrito"
+    
+class DetalleVenta(models.Model):
+    venta = models.ForeignKey(Venta, on_delete=models.CASCADE, related_name="items")
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
+    cantidad = models.PositiveIntegerField()
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def subtotal(self):
+        return self.cantidad * self.precio_unitario
+
+    def __str__(self):
+        return f"{self.cantidad} x {self.producto.nombre} en venta #{self.venta.id}"
+    
+# Modelo para la Calificación del Servicio
+class CalificacionServicio(models.Model):
+    venta = models.OneToOneField(Venta, on_delete=models.CASCADE, related_name="calificacion")
+    calificacion = models.IntegerField()  # Valor del 1 al 5 (por ejemplo)
+    comentario = models.TextField(blank=True, null=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Calificación para venta {self.venta.id}: {self.calificacion}"
+
+serializers.py:
+from rest_framework import serializers 
+from inventario.models import Inventario
+from productos.models import Producto
+from .models import Carrito, CarritoItem, Venta, DetalleVenta, CalificacionServicio
+
+class CarritoItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CarritoItem
+        fields = '__all__'
+
+class CarritoSerializer(serializers.ModelSerializer):
+    items = CarritoItemSerializer(many=True, source="carritoitem_set", read_only=True)
+
+    class Meta:
+        model = Carrito
+        fields = ['usuario', 'items']
+
+class DetalleVentaSerializer(serializers.ModelSerializer):
+    producto = serializers.PrimaryKeyRelatedField(queryset=Producto.objects.all())
+    class Meta:
+        model = DetalleVenta
+        fields = '__all__'
+
+class VentaSerializer(serializers.ModelSerializer):
+    # Utilizamos "detalles" que se corresponde con "detalleventa_set"
+    detalles = DetalleVentaSerializer(many=True, source="detalleventa_set", write_only=True)
+
+    class Meta:
+        model = Venta
+        fields = ['id', 'usuario', 'fecha', 'total', 'detalles']
+         
+    def create(self, validated_data):
+        # Extraemos los detalles usando la clave correcta
+        detalles_data = validated_data.pop('detalleventa_set')
+        venta = Venta.objects.create(**validated_data)
+        total = 0
+
+        for detalle_data in detalles_data:
+            detalle_data["venta"] = venta
+            producto = detalle_data["producto"]
+            cantidad = detalle_data["cantidad"]
+            subtotal = producto.precio * cantidad
+            detalle_data["subtotal"] = subtotal
+            total += subtotal
+
+            # Crear el registro de DetalleVenta
+            DetalleVenta.objects.create(**detalle_data)
+
+            # Actualizar stock del producto
+            producto.stock -= cantidad
+            producto.save()
+
+            # Si tienes un modelo Inventario y deseas actualizarlo:
+            
+            inventario = Inventario.objects.get(producto=producto)
+            inventario.cantidad = producto.stock
+            inventario.save()
+
+        venta.total = total
+        venta.save()
+        return venta
+    
+class CalificacionServicioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CalificacionServicio
+        fields = ['id', 'venta', 'calificacion', 'comentario', 'fecha']
+        read_only_fields = ['id', 'fecha']
+
+
+urls.py:
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import CarritoViewSet, CarritoItemViewSet, VentaViewSet,CalificacionServicioViewSet, reporte_ventas, reporte_ventas_usuario, reporte_productos_mas_vendidos
+
+
+router = DefaultRouter()
+router.register(r'carrito', CarritoViewSet, basename="carrito")
+router.register(r'carrito-item', CarritoItemViewSet, basename="carrito-item")
+router.register(r'venta', VentaViewSet, basename="venta")
+router.register(r'calificaciones', CalificacionServicioViewSet, basename= "calificaciones")  # Nueva ruta para calificaciones
+
+urlpatterns = [
+    path('', include(router.urls)),
+    path('reporte/ventas/', reporte_ventas, name='reporte_ventas'),
+    path('reporte/ventas-usuario/', reporte_ventas_usuario, name='reporte_ventas_usuario'),
+    path('reporte/productos-mas-vendidos/', reporte_productos_mas_vendidos, name='reporte_productos_mas_vendidos'),
+    
+]
+
+views.py:
+from django.shortcuts import get_object_or_404
+from django.db.models import Sum, Count
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework import viewsets, status
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from .models import Carrito, CarritoItem, Venta, DetalleVenta, CalificacionServicio
+from .serializers import CarritoSerializer, CarritoItemSerializer, VentaSerializer, CalificacionServicioSerializer
+
+class CarritoViewSet(viewsets.ModelViewSet):
+    serializer_class = CarritoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Carrito.objects.filter(usuario=self.request.user)
+
+    def create(self, request):
+        carrito, created = Carrito.objects.get_or_create(usuario=request.user)
+        return Response(CarritoSerializer(carrito).data)
+
+class CarritoItemViewSet(viewsets.ModelViewSet):
+    serializer_class = CarritoItemSerializer
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request):
+        carrito, _ = Carrito.objects.get_or_create(usuario=request.user)
+        producto_id = request.data.get("producto")
+        cantidad = int(request.data.get("cantidad", 1))
+
+        item, created = CarritoItem.objects.get_or_create(carrito=carrito, producto_id=producto_id)
+        if not created:
+            item.cantidad += cantidad
+            item.save()
+
+        return Response(CarritoItemSerializer(item).data)
+
+class VentaViewSet(viewsets.ModelViewSet):
+    queryset= Venta.objects.all()
+    serializer_class = VentaSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def perform_create(self, serializer):
+        serializer.save(usuario=self.request.user)
+
+    def create(self, request):
+        carrito = get_object_or_404(Carrito, usuario=request.user)
+        if not carrito.carritoitem_set.exists():
+            return Response({"error": "Carrito vacío"}, status=status.HTTP_400_BAD_REQUEST)
+
+        total = sum(item.subtotal() for item in carrito.carritoitem_set.all())
+        venta = Venta.objects.create(usuario=request.user, total=total)
+
+        for item in carrito.carritoitem_set.all():
+            DetalleVenta.objects.create(
+                venta=venta,
+                producto=item.producto,
+                cantidad=item.cantidad,
+                precio_unitario=item.producto.precio,
+            )
+        carrito.carritoitem_set.all().delete()
+
+        return Response(VentaSerializer(venta).data)
+    
+class CalificacionServicioViewSet(viewsets.ModelViewSet):
+    queryset = CalificacionServicio.objects.all()
+    serializer_class = CalificacionServicioSerializer
+    permission_classes = [IsAuthenticated]
+
+    # Puedes agregar lógica para que solo el usuario que realizó la venta pueda calificarla
+    def perform_create(self, serializer):
+        # Si deseas que la venta esté asociada al usuario actual, puedes validar aquí
+        serializer.save()
+
+# Reporte General de Ventas: Total de ventas e ingresos acumulados
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def reporte_ventas(request):
+    total_ventas = Venta.objects.count()
+    ingresos_totales = Venta.objects.aggregate(total=Sum('total'))['total'] or 0
+    return Response({
+        "total_ventas": total_ventas,
+        "ingresos_totales": ingresos_totales
+    })
+
+# Reporte de Ventas por Usuario: Ventas agrupadas por usuario
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def reporte_ventas_usuario(request):
+    # Agrupa por usuario y suma el total de ventas para cada uno
+    ventas_por_usuario = Venta.objects.values('usuario__username').annotate(
+        total_ventas=Sum('total'),
+        cantidad_ventas=Count('id')
+    ).order_by('-total_ventas')
+    return Response(ventas_por_usuario)
+
+# Reporte de Productos Más Vendidos: Lista de productos ordenados por cantidad vendida
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def reporte_productos_mas_vendidos(request):
+    # Agrupa por producto y suma la cantidad vendida
+    productos_vendidos = DetalleVenta.objects.values('producto__nombre').annotate(
+        total_vendido=Sum('cantidad')
+    ).order_by('-total_vendido')
+    return Response(productos_vendidos)
+
+
+
+

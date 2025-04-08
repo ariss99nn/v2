@@ -1,0 +1,905 @@
+Pasos iniciales:
+Configurar el entorno de desarrollo
+    python --version   # Verifica Python
+    psql --version     # Verifica PostgreSQL
+    node -v            # Verifica Node.js
+    npm -v             # Verifica npm (gestor de paquetes de Node.js)
+    git --version      # Verifica Git
+
+Crear entorno virtual:
+    py -m venv myenv
+    .\myenv\Scripts\activate
+
+Instalar dependencias necesarias:
+    pip install django djangorestframework
+    django-admin --version
+    pip install psycopg2-binary
+    pip install djangorestframework-simplejwt
+
+
+Crear el proyecto en Django:
+    django-admin startproject Backend
+
+Estructura del proyecto:
+Backend/
+│── manage.py          # Archivo para ejecutar comandos de Django
+│── Backend/           # Configuración principal del proyecto
+│   ├── __init__.py    
+│   ├── settings.py    # Configuración del proyecto
+│   ├── urls.py        # Definición de rutas
+│   ├── asgi.py        
+│   ├── wsgi.py 
+
+Configuración de la base de datos en postgresql:
+    CREATE DATABASE ecommerce_db;
+    CREATE USER ecommerce_user WITH ENCRYPTED PASSWORD 'ecommerce_pass';
+    GRANT ALL PRIVILEGES ON DATABASE ecommerce_db TO ecommerce_user;        #Otorgar permisos de conexión y creación de tablas
+    GRANT CONNECT ON DATABASE ecommerce_db TO ecommerce_user;
+    GRANT CREATE ON SCHEMA public TO ecommerce_user;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public                               #Dar permisos completos en todas las tablas y secuencias
+    GRANT ALL ON TABLES TO ecommerce_user;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT ALL ON SEQUENCES TO ecommerce_user;
+
+Hacer migraciones
+    py manage.py makemigrations
+    py manage.py migrate
+
+    py manage.py runserver
+
+Crear las apps que seran los modelos de la base de datos
+    python manage.py startapp usuarios
+    python manage.py startapp productos
+    python manage.py startapp ventas
+    python manage.py startapp inventario
+
+ecommerce/
+│── manage.py
+│── ecommerce/       # Configuración principal del proyecto
+│── usuarios/        # App de usuarios
+│   ├── models.py    # Modelos de base de datos
+│   ├── views.py     # Lógica del backend
+│   ├── urls.py      # Rutas de la app
+│   ├── admin.py     # Configuración del panel de administración
+│   ├── serializers.py # Para API con Django REST Framework (lo crearemos)
+│   ├── apps.py
+│   ├── tests.py
+│   ├── migrations/
+│── productos/       # App de productos
+│── ventas/          # App de ventas
+│── inventario/      # App de inventario
+
+Agregar a installed_apps
+    #Apps creadas
+    'usuarios',
+    'productos',
+    'ventas',
+    'inventario',  
+    #Django REST Framework (lo usaremos después)
+    'rest_framework',
+
+    py manage.py runserver
+
+Crear los roles en usuarios/signals.py
+
+from django.db.models.signals import post_migrate
+from django.contrib.auth.models import Group, Permission
+from django.dispatch import receiver
+from .models import usuario
+
+@receiver(post_migrate)
+def crear_roles(sender, **kwargs):
+    if sender.name == "usuarios":  # Para evitar ejecuciones en otras apps
+        roles = ['Administrador', 'Empleado', 'Cliente']
+
+        for role in roles:
+            group, created = Group.objects.get_or_create(name=role)
+
+            # Asignar permisos específicos
+            if role == 'Empleado':
+                permisos = Permission.objects.filter(content_type__app_label='store')
+                group.permissions.set(permisos)
+            elif role == 'Cliente':
+                group.permissions.clear()
+
+        print("Roles creados o actualizados correctamente.")
+
+@receiver(post_save, sender=Usuario)
+def asignar_grupo_usuario(sender, instance, created, **kwargs):
+    if created:  # Solo al crear un nuevo usuario
+        grupo = Group.objects.get(name=instance.get_rol_display())  # Usa el nombre del rol
+        instance.groups.add(grupo)  # Asigna el grupo al usuario
+
+Crea los grupos (Administrador, Empleado, Cliente) automáticamente después de hacer migraciones.
+Asigna roles a usuario
+
+Conectar signals.py en usuarios/app.py
+
+from django.apps import AppConfig
+
+class UsuariosConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'usuarios'
+
+    def ready(self):
+        import usuarios.signals  # Importa las señales al iniciar la app
+    
+Hacer migraciones
+
+--Crear los modelos usuarios/models.py
+
+from django.contrib.auth.models import AbstractUser  #
+from django.db import models
+
+class Usuario(AbstractUser):
+    ROLES = (
+        ('ADMIN', 'Administrador'),
+        ('EMPLOYEE', 'Empleado'),
+        ('CLIENT', 'Cliente'),
+    )
+    rol = models.CharField(max_length=10, choices=ROLES, default='CLIENT')
+
+    def __str__(self):
+        return f"{self.username} - {self.rol}"
+
+Hereda de AbstractUser para usar las funcionalidades de Django.
+Agrega un campo rol para definir el tipo de usuario.
+El método __str__ nos ayuda a mostrar el usuario en el panel de administración.
+
+Agregar AUTH_USER_MODEL en settings.py
+Abre settings.py y agrega esta línea:
+
+AUTH_USER_MODEL = 'usuarios.Usuario'
+Django necesita saber que usuarios.Usuario es el nuevo modelo de usuario en lugar de auth.User. 
+Sin esta configuración, Django sigue usando auth.User, lo que genera los conflictos que viste antes.
+
+--Crear los modelos productos/models.py
+
+class Categoria(models.Model):
+    nombre = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.nombre
+
+class Producto(models.Model):
+    nombre = models.CharField(max_length=255)
+    descripcion = models.TextField()
+    precio = models.DecimalField(max_digits=10, decimal_places=2)
+    categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
+    stock = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return self.nombre
+
+class Proveedor(models.Model):
+    nombre = models.CharField(max_length=255)
+    contacto = models.CharField(max_length=100)
+    telefono = models.CharField(max_length=15)
+
+    def __str__(self):
+        return self.nombre
+
+Categoria almacena nombres de categorías como "Electrónica", "Ropa", etc.
+Producto tiene nombre, descripción, precio, categoría y stock.
+Almacena los proveedores que suministran productos.
+ForeignKey crea la relación uno a muchos (una categoría puede tener muchos productos).
+
+--Crear los modelos en ventas/models.py
+
+from django.db import models
+from usuarios.models import Usuario
+from productos.models import Producto
+
+class Carrito(models.Model):
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
+    cantidad = models.PositiveIntegerField(default=1)
+
+    def __str__(self):
+        return f"{self.usuario} - {self.producto} - {self.cantidad}"
+
+class Venta(models.Model):
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    total = models.DecimalField(max_digits=10, decimal_places=2)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Venta {self.id} - {self.usuario} - ${self.total}"
+
+Carrito permite a los usuarios agregar productos antes de comprar.
+Venta almacena las compras realizadas.
+
+--Crear los modelos en inventario/models.py
+
+class Inventario(models.Model):
+    producto = models.OneToOneField(Producto, on_delete=models.CASCADE)
+    cantidad = models.PositiveIntegerField(default=0)
+    ultima_actualizacion = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.producto} - {self.cantidad} unidades"
+
+Inventario mantiene el stock actualizado de cada producto.
+
+Aplicar migraciones
+
+Crear un super usuario
+py manage.py createsuperuser
+Name: Ariss99
+Email: rodrigueznilo99@gmail.com
+Password: 1057462214nnra
+
+Crear serializers para convertir modelos en json:
+transforman nuestros modelos de base de datos en JSON, el formato con el que se comunican las APIs.
+
+--Crear serializers.py en usuarios
+
+from rest_framework import serializers
+from .models import Usuario
+
+class UsuarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Usuario
+        fields = ['id', 'username', 'email', 'rol']
+
+--Crear serializers.py en productos
+
+from rest_framework import serializers
+from .models import Categoria, Producto, Proveedor
+
+class CategoriaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Categoria
+        fields = '__all__'
+
+class ProductoSerializer(serializers.ModelSerializer):
+    categoria = CategoriaSerializer()
+
+    class Meta:
+        model = Producto
+        fields = '__all__'
+
+class ProveedorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Proveedor
+        fields = '__all__'
+
+--Crear serializers.py en ventas
+
+from rest_framework import serializers
+from .models import Carrito, Venta
+
+class CarritoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Carrito
+        fields = '__all__'
+
+class VentaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Venta
+        fields = '__all__'
+
+--Crear serializers.py en inventario
+
+from rest_framework import serializers
+from .models import Inventario
+
+class InventarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Inventario
+        fields = '__all__'
+
+Crear las views.py para manejar las peticiones HTTP (GET, POST, PUT, DELETE).
+--Agregar en views.py de usuarios
+
+from rest_framework import viewsets
+from .models import Usuario
+from .serializers import UsuarioSerializer
+
+class UsuarioViewSet(viewsets.ModelViewSet):
+    queryset = Usuario.objects.all()
+    serializer_class = UsuarioSerializer
+
+--Agregar en views.py de productos
+
+from rest_framework import viewsets
+from .models import Categoria, Producto, Proveedor
+from .serializers import CategoriaSerializer, ProductoSerializer, ProveedorSerializer
+
+class CategoriaViewSet(viewsets.ModelViewSet):
+    queryset = Categoria.objects.all()
+    serializer_class = CategoriaSerializer
+
+class ProductoViewSet(viewsets.ModelViewSet):
+    queryset = Producto.objects.all()
+    serializer_class = ProductoSerializer
+
+class ProveedorViewSet(viewsets.ModelViewSet):
+    queryset = Proveedor.objects.all()
+    serializer_class = ProveedorSerializer
+
+--Agregar en views.py de ventas
+
+from rest_framework import viewsets
+from .models import Carrito, Venta
+from .serializers import CarritoSerializer, VentaSerializer
+
+class CarritoViewSet(viewsets.ModelViewSet):
+    queryset = Carrito.objects.all()
+    serializer_class = CarritoSerializer
+
+class VentaViewSet(viewsets.ModelViewSet):
+    queryset = Venta.objects.all()
+    serializer_class = VentaSerializer
+
+--Agregar ne views.py de inventario
+
+from rest_framework import viewsets
+from .models import Inventario
+from .serializers import InventarioSerializer
+
+class InventarioViewSet(viewsets.ModelViewSet):
+    queryset = Inventario.objects.all()
+    serializer_class = InventarioSerializer
+
+Configurar las rutas API creando un archivo urls.py y define las rutas. urls.py
+
+--Crear urls.py en usuarios
+
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import UsuarioViewSet
+
+router = DefaultRouter()
+router.register(r'usuarios', UsuarioViewSet)
+
+urlpatterns = [
+    path('', include(router.urls)),
+]
+
+--Crear urls.py en produsctos
+
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import CategoriaViewSet, ProductoViewSet, ProveedorViewSet
+
+router = DefaultRouter()
+router.register(r'categorias', CategoriaViewSet)
+router.register(r'productos', ProductoViewSet)
+router.register(r'proveedores', ProveedorViewSet)
+
+urlpatterns = [
+    path('', include(router.urls)),
+]
+
+--Crear urls.py en ventas
+
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import CarritoViewSet, VentaViewSet
+
+router = DefaultRouter()
+router.register(r'carrito', CarritoViewSet)
+router.register(r'ventas', VentaViewSet)
+
+urlpatterns = [
+    path('', include(router.urls)),
+]
+
+--Crear uyrls.py en inventario
+
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import InventarioViewSet
+
+router = DefaultRouter()
+router.register(r'inventario', InventarioViewSet)
+
+urlpatterns = [
+    path('', include(router.urls)),
+]
+
+Agregar las Rutas Generales en el Proyecto
+Edita ecommerce/urls.py y agrega todas las rutas API:
+
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('usuarios.urls')),
+    path('api/', include('productos.urls')),
+    path('api/', include('ventas.urls')),
+    path('api/', include('inventario.urls')),
+]
+
+Probar la API con Postman
+Ejecuta el servidor:
+py manage.py runserver
+Abre Postman y prueba las siguientes rutas:
+
+Obtener usuarios: GET http://127.0.0.1:8000/api/usuarios/
+Obtener productos: GET http://127.0.0.1:8000/api/productos/
+Obtener ventas: GET http://127.0.0.1:8000/api/ventas/
+
+Si las respuestas son en JSON con los datos correspondientes, la API está funcionando
+
+Seguridad y Autenticación con Django REST Framework
+Ahora implementaremos un sistema de autenticación para que solo los usuarios registrados 
+puedan acceder a ciertas funciones del sistema. Utilizaremos Django REST Framework con tokens.
+
+Agregar a settings.py de backend
+# Configuración de autenticación
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+Crear Vistas para Registro y Login
+Editar views.py en usuarios para manejar la autenticación:
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth.models import User
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate
+
+# Generar token para un usuario
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
+
+# Vista para registrar usuarios
+class RegistroUsuarioView(APIView):
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        email = request.data.get('email')
+        rol = request.data.get('rol', 'CLIENT')  # Por defecto, Cliente
+
+        if User.objects.filter(username=username).exists():
+            return Response({'error': 'El usuario ya existe'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.create_user(username=username, password=password, email=email)
+        user.save()
+
+        return Response({'mensaje': 'Usuario creado correctamente'}, status=status.HTTP_201_CREATED)
+
+# Vista para iniciar sesión
+class LoginView(APIView):
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+
+        user = authenticate(username=username, password=password)
+
+        if user:
+            tokens = get_tokens_for_user(user)
+            return Response(tokens, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Credenciales inválidas'}, status=status.HTTP_401_UNAUTHORIZED)
+
+Configurar las Rutas de Autenticación
+Editar usuarios/urls.py
+
+from django.urls import path
+from .views import RegistroUsuarioView, LoginView
+
+urlpatterns = [
+    path('register/', RegistroUsuarioView.as_view(), name='register'),
+    path('login/', LoginView.as_view(), name='login'),
+]
+
+Editar ecommerce/urls.py para incluir las rutas de autenticación:
+
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('usuarios.urls')),
+    path('api/', include('productos.urls')),
+    path('api/', include('ventas.urls')),
+    path('api/', include('inventario.urls')),
+]
+
+Probar el Registro y Login en Postman
+-- Registrar un usuario
+
+headers->Content-Type->application/json
+
+Método: POST
+URL: http://127.0.0.1:8000/api/register/
+Cuerpo JSON:
+{
+    "username": "admin",
+    "password": "123456",
+    "email": "admin@email.com",
+    "rol": "ADMIN"
+}
+Si funciona, respondera:
+{
+    "mensaje": "Usuario creado correctamente"
+}
+
+-- Iniciar sesión
+
+Método: POST
+URL: http://127.0.0.1:8000/api/login/
+Cuerpo JSON:
+
+{
+    "username": "admin",
+    "password": "123456"
+}
+Si funciona, responderá con un token:
+{
+    "refresh": "TOKEN_DE_REFRESH",
+    "access": "TOKEN_DE_ACCESO"
+}
+
+Authorization->Bearer TOKEN_DE_ACCESO
+confirmar datos de guardado del token en jwt.io o depurar en shell
+python manage.py shell
+import jwt
+from django.conf import settings
+
+token = "TU_TOKEN_AQUI"  # Reemplaza con tu token de acceso
+try:
+    decoded = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.SIMPLE_JWT['ALGORITHM']])
+    print(decoded)
+except Exception as e:
+    print("Error al decodificar:", e)
+
+Agregar a settings.py
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=50),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,  # O la clave que uses para firmar los tokens
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+
+
+Proteger las Rutas API con Autenticación
+
+Editar productos/views.py para requerir autenticación:
+
+from rest_framework.permissions import IsAuthenticated
+
+class ProductoViewSet(viewsets.ModelViewSet):
+    queryset = Producto.objects.all()
+    serializer_class = ProductoSerializer
+    permission_classes = [IsAuthenticated]
+
+Ejecutar con Postman
+Ahora que tienes el token de acceso, úsalo para hacer una petición protegida.
+
+Método: GET
+URL: http://127.0.0.1:8000/api/productos/ (o cualquier otra API protegida)
+Headers:
+Authorization: Bearer TOKEN_DE_ACCESO
+
+Ve a la pestaña "Authorization".
+En "Type", selecciona "Bearer Token".
+Pega el token de acceso obtenido en el login.
+Haz clic en "Send".
+
+Renovar el Token (Opcional)
+Si el access token expira, puedes usar el refresh token para obtener uno nuevo.
+
+Método: POST
+URL: http://127.0.0.1:8000/api/token/refresh/
+Body (JSON):
+{
+    "refresh": "TOKEN_DE_REFRESH"
+}
+Si la solicitud es exitosa, recibirás un nuevo access token.
+
+Configurar Permisos y Roles en la API
+
+Ahora que la autenticación funciona correctamente, 
+configuraremos los permisos para que cada usuario solo pueda acceder a ciertas partes del sistema según su rol:
+Administrador: Puede hacer todo (CRUD de usuarios, productos, ventas, etc.).
+Empleado: Puede gestionar productos, inventarios y ventas, pero no modificar usuarios.
+Cliente: Solo puede ver productos y realizar compras.
+
+--Llenar productos con Postman
+{
+  "nombre": "Laptop Gamer",
+  "precio": 1200,
+  "stock": 10,
+  "categoria": 1,
+  "descripcion": "Computadora de 9 generacion, ram 16gb, procesador i5"
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--Agregar usuario de empleado
+from usuarios.models import Usuario
+user = Usuario.objects.create_user(username="empleado1", password="123456", email="empleado@email.com", rol="EMPLOYEE")
+print(user.groups.all())
+
+--Agregar usuario de cliente
+from usuarios.models import Usuario
+user = Usuario.objects.create_user(username="cliente1", password="123456", email="cliente@email.com", rol="CLIENT")
+print(user.groups.all())
+
+--Agregar usuraio de Administrador
+from usuarios.models import Usuario
+user = Usuario.objects.create_user(username="admin", password="123456", email="admin@email.com", rol="ADMIN")
+print(user.groups.all())
+
+--Consultar los grupos de roles
+from django.contrib.auth.models import Group
+print(Group.objects.all())  # Debe mostrar solo: ADMIN, EMPLOYEE, CLIENT
+
+
+--Eliminar las migraciones
+Remove-Item -Recurse -Force usuarios\migrations
+Remove-Item -Recurse -Force ventas\migrations
+Remove-Item -Recurse -Force productos\migrations
+Remove-Item -Recurse -Force inventario\migrations
+
+--Hacer migraciones
+py manage.py makemigrations usuarios
+py manage.py makemigrations ventas
+py manage.py makemigrations productos
+py manage.py makemigrations inventario
+
+--Eliminar grupos de roles
+from django.contrib.auth.models import Group
+grupos_a_eliminar = ["Administrador", "Empleado", "Cliente", "EMPLEADO", "CLIENTE", "ADMIN"]
+for nombre in grupos_a_eliminar:
+    try:
+        grupo = Group.objects.get(name=nombre)
+        grupo.delete()
+        print(f"Grupo '{nombre}' eliminado correctamente.")
+    except Group.DoesNotExist:
+        print(f"Grupo '{nombre}' no existe, se omite.")
+
+--Crear los roles de forma manual
+from django.contrib.auth.models import Group
+from usuarios.signals import crear_roles
+crear_roles(sender="usuarios")
+
+--Eliminar usuarios especificos
+from django.contrib.auth import get_user_model
+User = get_user_model()
+usuarios = User.objects.get(username='usuario1', 'usuario2')
+usuarios.delete()
+print(usuarios)
+
+--Eliminar todos los usuarios
+from django.contrib.auth import get_user_model
+User = get_user_model()
+User.objects.all().delete()
+
+--Mostrar los usuarios y roles
+from django.contrib.auth import get_user_model
+User = get_user_model()
+usuarios = User.objects.all()
+print(usuarios)
+
+
+--Hacer consulta de usuario a ver que rol desempeñan
+from usuarios.models import Usuario
+admin = Usuario.objects.get(username="admin")
+print(admin.groups.all())
+empleado = Usuario.objects.get(username="empleado1")
+print(empleado.groups.all())
+cliente = Usuario.objects.get(username="cliente1")
+print(cliente.groups.all()) 
+
+--Crear categoria
+from productos.models import Categoria
+categoria_nueva = Categoria.objects.create(nombre="Hogar")
+categoria_nueva = Categoria.objects.create(nombre="Ropa")
+categoria_nueva = Categoria.objects.create(nombre="Accesorios")
+print(Categoria.objects.all())
+
+--Consultar categoria con id
+from productos.models import Categoria
+categoria = Categoria.objects.first()
+print(categoria.id, categoria.nombre)
+
+--Mostar permisos de rol
+from django.contrib.auth.models import Group
+cliente_group = Group.objects.get(name="CLIENT")
+print(cliente_group.permissions.all())
+
+Seguridad Extra (Opcional)
+🔹 Protección CSRF: Si usas autenticación basada en sesiones.
+🔹 Autenticación con JWT: Si usas API REST (DRF).
+🔹 Rate Limiting: Para evitar abuso de inicios de sesión.
+
+📌 Prueba:
+
+En Postman, intenta hacer muchas solicitudes de inicio de sesión en poco tiempo.
+
+--Crear carrito(Opcional)
+Método: POST carrito
+URL: http://127.0.0.1:8000/carrito/
+Body: (No necesita enviar nada, ya que el usuario se obtiene del token)
+{}
+Respuesta esperada:
+{
+  "usuario": 1,
+  "items": []
+}
+--Agregar Producto al Carrito
+Agrega un producto al carrito del usuario actual.
+Si el producto ya está en el carrito, aumenta su cantidad.
+Método: POST
+URL: http://127.0.0.1:8000/carrito-item/
+Body:
+{
+  "producto": 2,
+  "cantidad": 3
+} #El producto es el ID del producto que quieres agregar.
+Respuesta esperada:
+{
+  "id": 5,
+  "carrito": 1,
+  "producto": 2,
+  "cantidad": 3
+}#Si agregas el mismo producto otra vez, la cantidad aumentará en lugar de crear otro registro.
+
+--Ver Carrito
+Devuelve todos los productos que tiene el usuario en su carrito.
+Método: GET
+URL: http://127.0.0.1:8000/carrito/
+Respuesta esperada:
+{
+  "usuario": 1,
+  "items": [
+    {
+      "id": 5,
+      "carrito": 1,
+      "producto": 2,
+      "cantidad": 3
+    }
+  ]
+}#Esto muestra el contenido del carrito del usuario autenticado.
+
+--Confirmar Venta
+Convierte el carrito en una venta.
+Crea un registro en la tabla Venta.
+Crea registros en DetalleVenta con los productos comprados.
+Vacía el carrito después de confirmar la compra.
+Método: POST
+URL: http://127.0.0.1:8000/venta/
+{}
+Respuesta esperada:
+{
+  "usuario": 1,
+  "fecha": "2025-03-29T15:30:00.123456Z",
+  "total": 150.00,
+  "detalles": [
+    {
+      "venta": 3,
+      "producto": 2,
+      "cantidad": 3,
+      "precio_unitario": 50.00
+    }
+  ]
+}#Después de confirmar la venta, el carrito queda vacío y los productos se registran en la venta.
+
+✔ Restringir productos según stock.
+✔ Agregar descuentos o impuestos.
+✔ Ver historial de compras por usuario.
+✔ Integrar pagos con Stripe o PayPal.
+
+--Verificar el inventario
+from inventario.models import Inventario
+print(Inventario.objects.all())
+
+--Actualizar el inventario
+from inventario.models import Inventario
+producto = Producto.objects.first()  
+if producto:
+    Inventario.objects.create(producto=producto, cantidad=50)
+    print("Inventario creado con éxito.")
+else:
+    print("No hay productos en la base de datos. Crea uno primero.")
+
+--Actualizar Stock
+petición PUT a:
+http://127.0.0.1:8000/inventario/1/
+Body:
+{
+    "cantidad": 45
+}
+Respuesta esperada.
+{
+    "id": 1,
+    "producto": 2,
+    "producto_nombre": "Laptop Gamer",
+    "cantidad": 45,
+    "ultima_actualizacion": "2025-03-29T16:00:00.123456Z"
+}#Esto actualizará la cantidad de stock.
+
+--Crear en masa
+from inventario.models import Inventario
+from productos.models import Producto
+
+productos = Producto.objects.all()
+
+for producto in productos:
+    inventario, creado = Inventario.objects.get_or_create(producto=producto, defaults={"cantidad": 50})
+    if creado:
+        print(f"Inventario creado para {producto.nombre}")
+    else:
+        print(f"Inventario ya existía para {producto.nombre}")
+
+
+--Crear productos desde shell stock se envia a inventario
+from productos.models import Producto
+
+producto = Producto.objects.create(
+    nombre="Tablet Samsung",
+    descripcion="Tablet de 10 pulgadas",
+    precio=300.00,
+    stock=25, 
+    categoria_id=1
+)
+
+--Crear reportes de ventas, mas vendido
+Entonces, las URLs:
+metodo: GET
+/ventas/reporte/ventas/
+/ventas/reporte/ventas-usuario/
+/ventas/reporte/productos-mas-vendidos/
+
+Integración con pasarelas de pago (PayPal, Stripe, etc.).
+Funcionalidades avanzadas en el carrito (aplicación de cupones, cálculos de impuestos, envíos, etc.).
+Optimización, manejo de errores y seguridad adicional (por ejemplo, rate limiting, validaciones más robustas).
+Implementación de APIs para notificaciones, historial de compras, etc.
+
+Crear el Modelo de Calificación
+Podemos agregar este modelo en la misma app de ventas (o crear una app aparte si prefieres separar esta funcionalidad). En este ejemplo, lo agregaremos en ventas/models.py:
+Probar la Funcionalidad
+Usa Postman para probar lo siguiente:
+
+Crear una calificación:
+POST /ventas/calificaciones/ con un JSON como:
+
+json
+Copiar
+Editar
+{
+    "venta": 3,
+    "calificacion": 5,
+    "comentario": "Excelente servicio, muy rápido!"
+}
+Obtener la calificación:
+GET /ventas/calificaciones/ (debes ver las calificaciones registradas).
+
+
+--Iniciar frontend con react
+npx create-react-app ecommerce-frontend
+npm install axios
+npm audit fix --force
+npm install react-router-dom

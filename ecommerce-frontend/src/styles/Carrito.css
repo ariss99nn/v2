@@ -1,0 +1,10 @@
+.carrito-container {
+    padding: 2rem;
+  }
+  
+  .producto-carrito {
+    border: 1px solid #ccc;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  
