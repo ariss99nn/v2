@@ -33,13 +33,10 @@ export async function loginUsuario(username, password) {
 }
 
 export const registrarUsuario = async (datos) => {
-  try {
+  
     const response = await api.post("/register/", datos);
     return response.data;
-  } catch (error) {
-    // Manejo de error corregido
-    throw new Error(error.response?.data?.message || "Error al registrar usuario");
-  }
+
 };
 
 export default api;

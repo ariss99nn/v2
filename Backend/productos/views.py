@@ -14,6 +14,7 @@ class CategoriaViewSet(viewsets.ModelViewSet):
     queryset = Categoria.objects.all()
     
 class ProductoViewSet(viewsets.ModelViewSet):
+    
     queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
 
@@ -22,8 +23,8 @@ class ProductoViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return [AllowAny()]
         # Solo admin y empleados para crear, actualizar, eliminar
-        return [IsAuthenticated(), IsAdminOrEmployee()]
-    
+        return [IsAdminOrEmployee(), IsAuthenticated()]
+    #, 
 class ProveedorViewSet(viewsets.ModelViewSet):
     queryset = Proveedor.objects.all()
     serializer_class = ProveedorSerializer

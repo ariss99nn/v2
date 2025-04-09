@@ -11,10 +11,7 @@ const Navbar = () => {
   const esAdmin = user?.rol === "ADMIN";
 
   const handleLogout = () => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
-    setUser(null);
-    navigate("/login");
+    navigate("/");
   };
 
   return (

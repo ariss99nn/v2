@@ -28,6 +28,7 @@ const Registro = () => {
         navigate("/login");
       }, 2000);
     } catch (err) {
+      console.log(err.response?.data||err.message);
       setError(err.message || "Error al registrar");
     }
   };
@@ -36,7 +37,7 @@ const Registro = () => {
     <div className="login-container">
       <h2>Registro</h2>
       <form onSubmit={handleSubmit}>
-        <input name="username" placeholder="Usuario" value={formData.username} onChange={handleChange} required />
+        <input name="username" placeholder="Usuario" type="text" value={formData.username} onChange={handleChange} required />
         <input name="email" placeholder="Correo electrónico" type="email" value={formData.email} onChange={handleChange} required />
         <input name="password" placeholder="Contraseña" type="password" value={formData.password} onChange={handleChange} required />
         <button className="btn" onClick={handleSubmit}>Registrarme</button>

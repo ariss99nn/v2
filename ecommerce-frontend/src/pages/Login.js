@@ -7,7 +7,7 @@ import "../styles/Login.css";
 const Login = () => {
   const { setUser } = useContext(UserContext);
   const navigate = useNavigate();
-  const [credenciales, setCredenciales] = useState({ identificador: "", password: "" });
+  const [credenciales, setCredenciales] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
 
   const handleChange = (e) => {
@@ -19,16 +19,18 @@ const Login = () => {
     setError("");
 
     try {
-      const response = await api.post("/api/usuarios/login/", credenciales);
+      const response = await api.post("/login/", credenciales);
       const { token, ...userData } = response.data;
 
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(userData));
 
       setUser(userData);
+      console.log("Login response", response.data)
       navigate("/");
     } catch (err) {
-      setError("❌ Usuario o contraseña incorrectos.");
+      console.log(err.response?.data||err.message);
+      setError("Usuario o contraseña incorrectos.");
       console.error(err);
     }
   };
@@ -39,9 +41,9 @@ const Login = () => {
       <form onSubmit={handleSubmit}>
         <input
           type="text"
-          name="identificador"
+          name="username"
           placeholder="Username"
-          value={credenciales.identificador}
+          value={credenciales.username}
           onChange={handleChange}
           required
         />
@@ -53,7 +55,6 @@ const Login = () => {
           onChange={handleChange}
           required
         />
-        {/* Cambiamos el <a> por un <button> estilizado como enlace */}
         <button type="submit" className="btn-link">Ingresar</button>
       </form>
 

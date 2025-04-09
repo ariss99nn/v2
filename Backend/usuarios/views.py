@@ -4,15 +4,21 @@ from django.contrib.auth import authenticate
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.utils.translation import gettext_lazy as _
+from django.db.models import Q
+from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import Usuario
 from .serializers import UsuarioSerializer
+from rest_framework import serializers
+
 
 User = get_user_model()
 
 # Vista para registrar usuarios
 class RegistroUsuarioView(APIView):
+    permission_classes = [AllowAny]
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')

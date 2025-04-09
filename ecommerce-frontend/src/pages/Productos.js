@@ -15,7 +15,7 @@ const Productos = () => {
         setProductos(response.data);
       } catch (err) {
         setError("Error al cargar los productos");
-        console.error("❌ Error productos:", err);
+        console.error("Error productos:", err);
       } finally {
         setCargando(false); // 👈 lo agregamos acá
       }
