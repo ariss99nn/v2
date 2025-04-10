@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import "../styles/Productos.css";
 import api from "../services/api";
+import { UserContext } from "../context/UserContext";
 
 const Productos = () => {
   const [productos, setProductos] = useState([]);
   const [error, setError] = useState(null);
-  const [cargando, setCargando] = useState(true); // 👈 faltaba
+  const [cargando, setCargando] = useState(true);
+  const { user, token } = useContext(UserContext);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProductos = async () => {
@@ -17,12 +20,32 @@ const Productos = () => {
         setError("Error al cargar los productos");
         console.error("Error productos:", err);
       } finally {
-        setCargando(false); // 👈 lo agregamos acá
+        setCargando(false);
       }
     };
 
     fetchProductos();
   }, []);
+
+  const agregarAlCarrito = async (productoId) => {
+    if (!token) {
+      alert("Debes iniciar sesión para agregar productos");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      await api.post("/carrito-item/", {
+        producto: productoId,
+        cantidad: 1,
+      });
+
+      alert("Producto agregado al carrito 🎉");
+    } catch (err) {
+      console.error("Error al agregar al carrito:", err);
+      alert("Ocurrió un error al agregar el producto");
+    }
+  };
 
   return (
     <div className="productos-container">
@@ -43,9 +66,19 @@ const Productos = () => {
               <p>${producto.precio}</p>
               <p>{producto.descripcion}</p>
               <p>Stock: {producto.stock}</p>
-              <Link to={`/productos/${producto.id}`} className="btn">
-  Ver detalles
-</Link>
+
+              {token ? (
+                <button
+                  className="btn comprar"
+                  onClick={() => agregarAlCarrito(producto.id)}
+                >
+                  Comprar
+                </button>
+              ) : (
+                <Link to={`/productos/${producto.id}`} className="btn">
+                  Ver detalles
+                </Link>
+              )}
             </div>
           ))}
         </div>

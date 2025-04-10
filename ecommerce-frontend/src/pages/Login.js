@@ -1,11 +1,11 @@
 import React, { useContext, useState } from "react";
-import { useNavigate, Link } from "react-router-dom"; // Importa Link
+import { useNavigate, Link } from "react-router-dom";
 import { UserContext } from "../context/UserContext";
 import api from "../services/api";
 import "../styles/Login.css";
 
 const Login = () => {
-  const { setUser } = useContext(UserContext);
+  const { setUser, setToken } = useContext(UserContext); // ✅ añadimos setToken
   const navigate = useNavigate();
   const [credenciales, setCredenciales] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
@@ -20,18 +20,22 @@ const Login = () => {
 
     try {
       const response = await api.post("/login/", credenciales);
-      const { token, ...userData } = response.data;
+      const { access, refresh, user } = response.data; // ✅ obtenemos lo que el backend devuelve
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(userData));
+      // Guardar tokens y usuario en localStorage
+      localStorage.setItem("access", access);
+      localStorage.setItem("refresh", refresh);
+      localStorage.setItem("user", JSON.stringify(user));
 
-      setUser(userData);
-      console.log("Login response", response.data)
+      // Guardar en contexto
+      setUser(user);
+      setToken(access);
+
+      console.log("Login correcto:", response.data);
       navigate("/");
     } catch (err) {
-      console.log(err.response?.data||err.message);
+      console.log(err.response?.data || err.message);
       setError("Usuario o contraseña incorrectos.");
-      console.error(err);
     }
   };
 

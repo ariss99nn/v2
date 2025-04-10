@@ -12,7 +12,7 @@ class CarritoSerializer(serializers.ModelSerializer):
     items = CarritoItemSerializer(many=True, source="carritoitem_set", read_only=True)
     class Meta:
         model = Carrito
-        fields = ['usuario', 'items']
+        fields = ['id', 'usuario', 'items']
 
 class DetalleVentaSerializer(serializers.ModelSerializer):
     producto = serializers.PrimaryKeyRelatedField(queryset=Producto.objects.all())

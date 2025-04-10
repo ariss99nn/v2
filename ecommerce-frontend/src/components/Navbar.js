@@ -4,13 +4,14 @@ import { UserContext } from "../context/UserContext.js";
 import "../styles/Navbar.css";
 
 const Navbar = () => {
-  const { user, setUser } = useContext(UserContext);
+  const { user, logout } = useContext(UserContext);
   const navigate = useNavigate();
 
   const esEmpleado = user?.rol === "EMPLOYEE";
   const esAdmin = user?.rol === "ADMIN";
 
   const handleLogout = () => {
+    logout();
     navigate("/");
   };
 

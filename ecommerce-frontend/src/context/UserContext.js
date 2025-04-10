@@ -28,7 +28,7 @@ export const UserProvider = ({ children }) => {
       localStorage.removeItem("access");
     }
     setToken(newToken);
-  }
+  };
   //Cerrar sesion eliminando todos los datos de localstorage con una sola llamda
   const logout=()=>{
     localStorage.removeItem("access");
@@ -37,7 +37,7 @@ export const UserProvider = ({ children }) => {
     setUser(null);
     setToken(null);
 
-  }
+  };
 
   return (
     <UserContext.Provider value={{ user, setUser:handleSetUser, token, setToken:handleSetToken, logout}}>

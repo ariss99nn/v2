@@ -40,6 +40,9 @@ Configuración de la base de datos en postgresql:
     GRANT ALL ON TABLES TO ecommerce_user;
     ALTER DEFAULT PRIVILEGES IN SCHEMA public
     GRANT ALL ON SEQUENCES TO ecommerce_user;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO tuusuario;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO tuusuario;
+    GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO tuusuario;
 
 Hacer migraciones
     py manage.py makemigrations
