@@ -5,7 +5,7 @@ import { UserContext } from "../context/UserContext";
 
 const ProductoDetalle = () => {
   const { id } = useParams();
-  const { user } = useContext(UserContext);
+  const { user, token } = useContext(UserContext); // ✅ Obtén el token también
   const navigate = useNavigate();
   const [producto, setProducto] = useState(null);
   const [error, setError] = useState(null);
@@ -23,10 +23,29 @@ const ProductoDetalle = () => {
     fetchProducto();
   }, [id]);
 
-  const handleComprarClick = (e) => {
+  const handleComprarClick = async (e) => {
     e.preventDefault();
-    if (user) {
-      navigate("/carrito");
+    if (user && token) { // ✅ Verifica si el usuario está autenticado y hay un token
+      try {
+        // ✅ Realiza una petición POST para agregar el producto al carrito
+        const response = await api.post(
+          "/carrito-item/", // 👈 Asegúrate de que esta sea la ruta correcta en tu backend
+          {
+            producto: id, // Envía el ID del producto
+            cantidad: 1, // Puedes permitir al usuario seleccionar la cantidad después
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`, // ✅ Incluye el token en la autorización
+            },
+          }
+        );
+        console.log("Producto añadido al carrito:", response.data);
+        navigate("/Carrito"); // Redirige al carrito después de añadir
+      } catch (error) {
+        console.error("Error al añadir al carrito:", error.response?.data || error.message);
+        setError("No se pudo añadir el producto al carrito.");
+      }
     } else {
       navigate("/login");
     }
@@ -43,7 +62,9 @@ const ProductoDetalle = () => {
       <p>Descripción: {producto.descripcion}</p>
       <p>Stock: {producto.stock}</p>
 
-      <button type="submit" className="btn-link" onClick={handleComprarClick}>Ingresar</button>
+      <button type="submit" className="btn-link" onClick={handleComprarClick}>
+        {user ? "Añadir al Carrito" : "Ingresar para Comprar"}
+      </button>
       <br />
       <Link to="/productos">← Volver a productos</Link>
     </div>
