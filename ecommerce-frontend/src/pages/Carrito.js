@@ -2,18 +2,19 @@ import React, { useEffect, useState, useContext } from "react";
 import { UserContext } from "../context/UserContext";
 import "../styles/Carrito.css";
 import api from "../services/api";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Carrito = () => {
   const { user } = useContext(UserContext);
   const [productos, setProductos] = useState([]);
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCarrito = async () => {
       try {
-        const response = await api.get("/carrito-item/"); // Asegúrate de la URL correcta
+        const response = await api.get("/carrito-item/");
         setProductos(response.data);
       } catch (error) {
         setError("Error al cargar los productos del carrito");
@@ -23,13 +24,28 @@ const Carrito = () => {
       }
     };
 
-    if (user) { // Solo fetch si el usuario está autenticado
+    if (user) {
       fetchCarrito();
     } else {
       setCargando(false);
-      setProductos([]); // Limpiar el carrito si no hay usuario
+      setProductos([]);
     }
-  }, [user]); // ✅ Lista de dependencias: solo se ejecuta cuando cambia 'user'
+  }, [user]);
+
+  const handleRemoveProducto = async (itemId) => {
+    try {
+      await api.delete(`/carrito-item/${itemId}/`);
+      const updatedProductos = productos.filter(producto => producto.id !== itemId);
+      setProductos(updatedProductos);
+    } catch (error) {
+      console.error("Error al eliminar el producto del carrito:", error);
+      setError("Error al eliminar el producto del carrito");
+    }
+  };
+
+  const handleComprarCarrito = () => {
+    navigate("/Venta");
+  };
 
   return (
     <div className="carrito-container">
@@ -47,17 +63,26 @@ const Carrito = () => {
         <p>No hay productos en tu carrito aún.</p>
       ) : (
         <div className="productos-carrito">
-          {productos.map((producto, index) => (
-            <div key={index} className="producto-carrito">
-              {producto.producto && ( // ✅ Asegúrate de que 'producto' y 'producto.nombre' existan
+          {productos.map((producto) => (
+            <div key={producto.id} className="producto-carrito">
+              {producto.producto && (
                 <>
                   <p>{producto.producto.nombre}</p>
                   <p>Precio: ${producto.producto.precio}</p>
+                  {producto.producto.categoria && (
+                    <p>Categoría: {producto.producto.categoria.nombre}</p>
+                  )}
                 </>
               )}
               <p>Cantidad: {producto.cantidad}</p>
+              <button onClick={() => handleRemoveProducto(producto.id)}>
+                Remover
+              </button>
             </div>
           ))}
+          <button className="comprar-button" onClick={handleComprarCarrito}>
+            Comprar Carrito
+          </button>
         </div>
       )}
     </div>

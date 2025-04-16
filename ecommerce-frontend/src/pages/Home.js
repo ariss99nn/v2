@@ -2,8 +2,9 @@ import React, { useEffect, useState, useContext } from 'react';
 import api from '../services/api';
 import { Link } from 'react-router-dom';
 import { UserContext } from '../context/UserContext';
-import '../styles/Home.css'; // Asegúrate de tener un archivo CSS para estilos
+import '../styles/Home.css';
 import '../styles/ProductosCategoria.css';
+
 const Home = () => {
   const { user } = useContext(UserContext);
   const [categorias, setCategorias] = useState([]);
@@ -13,7 +14,7 @@ const Home = () => {
   useEffect(() => {
     const fetchCategorias = async () => {
       try {
-        const response = await api.get('/categorias/'); // 👈 Cambia la ruta a tu endpoint de categorías
+        const response = await api.get('/categorias/');
         setCategorias(response.data);
       } catch (error) {
         setError('Error al cargar las categorías');
@@ -50,8 +51,8 @@ const Home = () => {
             {categorias.map((categoria) => (
               <div key={categoria.id} className="categoria-card">
                 <h3>{categoria.nombre}</h3>
-                {/* Puedes añadir más información de la categoría aquí si lo deseas */}
-                <Link to={`/productos?categoria=${categoria.id}`}>Ver Productos</Link> {/* Enlace para ver productos por categoría */}
+                {/* Enlace ahora pasa el ID de la categoría como parte de la ruta */}
+                <Link to={`/productos/categoria/${categoria.id}`}>Ver Productos</Link>
               </div>
             ))}
           </div>

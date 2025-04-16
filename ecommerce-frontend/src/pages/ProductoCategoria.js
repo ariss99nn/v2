@@ -4,10 +4,11 @@ import api from '../services/api';
 import '../styles/ProductosCategoria.css'; // Asegúrate de tener un archivo CSS para esta página
 
 const ProductosCategoria = () => {
-  const { categoriaId } = useParams(); // Obtiene el ID de la categoría desde la URL (si está configurado así)
+  const { categoriaId } = useParams(); // Obtiene el ID de la categoría desde la URL
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
-  const categoriaNombreQuery = queryParams.get('categoria'); // Obtiene el nombre de la categoría desde la query param
+  const categoriaNombreQuery = queryParams.get('categoriaNombre'); // Obtiene el nombre de la categoría desde la query param
+
   const [productos, setProductos] = useState([]);
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -20,19 +21,19 @@ const ProductosCategoria = () => {
         let url = '/productos/'; // Endpoint base para productos
         if (categoriaId) {
           url += `?categoria=${categoriaId}`; // Filtrar por ID si está en la URL
-        } else if (categoriaNombreQuery) {
-          url += `?nombre_categoria=${categoriaNombreQuery}`; // Filtrar por nombre si está en la query
-          // Nota: Ajusta 'nombre_categoria' al nombre del campo de filtro en tu backend
         }
+        // Ya no necesitamos la lógica para filtrar por nombre desde la query param
+        // ya que el ID es más directo y eficiente.
 
         const response = await api.get(url);
         setProductos(response.data);
 
         // Si no tenemos el nombre de la categoría y estamos filtrando por ID,
-        // podríamos hacer una llamada adicional para obtener el nombre de la categoría
-        if (categoriaId && !categoriaNombreQuery && response.data.length > 0) {
-          // Asumiendo que el primer producto tiene la información de la categoría
-          setCategoriaNombre(response.data[0].categoria_nombre || ''); // Ajusta según la estructura de tu respuesta
+        // intentamos obtenerlo del primer producto de la respuesta.
+        if (categoriaId && !categoriaNombreQuery && response.data.length > 0 && response.data[0].categoria) {
+          setCategoriaNombre(response.data[0].categoria.nombre || '');
+        } else if (categoriaNombreQuery) {
+          setCategoriaNombre(categoriaNombreQuery); // Usamos el nombre de la query param si está disponible
         }
 
       } catch (error) {
@@ -44,7 +45,7 @@ const ProductosCategoria = () => {
     };
 
     fetchProductosPorCategoria();
-  }, [categoriaId, categoriaNombreQuery]);
+  }, [categoriaId]); // Depende solo del ID de la categoría
 
   return (
     <div className="productos-categoria-container">

@@ -11,6 +11,8 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import ProductoDetalle from "./pages/ProductoDetalle";
 import Registro from "./pages/Registro";
+import ProductosCategoria from "./pages/ProductoCategoria";
+import Venta from "./pages/Venta";
 
 const App = () => {
   return (
@@ -27,6 +29,10 @@ const App = () => {
             <Route path="/inventario" element={<Inventario />} />
             <Route path="/carrito" element={<Carrito />} />
             <Route path="/perfil" element={<Perfil />} />
+            <Route path="/productodetalle" element={<ProductoDetalle />} />
+            <Route path="/productocategoria" element={<ProductosCategoria />} />
+
+            <Route path="/venta" element={<Venta />} />
           </Routes>
         </div>
         <Footer />

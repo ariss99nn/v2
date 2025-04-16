@@ -39,12 +39,15 @@ const Productos = () => {
         producto: productoId,
         cantidad: 1,
       });
-
       alert("Producto agregado al carrito 🎉");
     } catch (err) {
       console.error("Error al agregar al carrito:", err);
       alert("Ocurrió un error al agregar el producto");
     }
+  };
+
+  const verDetalleProducto = (productoId) => {
+    navigate(`/producto-detalle/${productoId}`);
   };
 
   return (
@@ -66,19 +69,33 @@ const Productos = () => {
               <p>${producto.precio}</p>
               <p>{producto.descripcion}</p>
               <p>Stock: {producto.stock}</p>
+              {producto.categoria && <p>Categoría: {producto.categoria}</p>}
 
-              {token ? (
-                <button
-                  className="btn comprar"
-                  onClick={() => agregarAlCarrito(producto.id)}
-                >
-                  Comprar
-                </button>
-              ) : (
-                <Link to={`/productos/${producto.id}`} className="btn">
-                  Ver detalles
-                </Link>
-              )}
+              <div className="producto-actions">
+                {token ? (
+                  <>
+                    <button
+                      className="btn comprar"
+                      onClick={() => agregarAlCarrito(producto.id)}
+                    >
+                      Comprar
+                    </button>
+                    <button
+                      className="btn detalle"
+                      onClick={() => verDetalleProducto(producto.id)}
+                    >
+                      Ver detalles
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="btn detalle"
+                    onClick={() => verDetalleProducto(producto.id)}
+                  >
+                    Ver detalles
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
