@@ -1,12 +1,13 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import CarritoViewSet, CarritoItemViewSet, VentaViewSet,CalificacionServicioViewSet, reporte_ventas, reporte_ventas_usuario, reporte_productos_mas_vendidos
+from .views import DetalleVentaSerializer, CarritoViewSet, CarritoItemViewSet, VentaViewSet,CalificacionServicioViewSet, reporte_ventas, reporte_ventas_usuario, reporte_productos_mas_vendidos
 
 
 router = DefaultRouter()
 router.register(r'carrito', CarritoViewSet, basename="carrito")
 router.register(r'carrito-item', CarritoItemViewSet, basename="carrito-item")
 router.register(r'venta', VentaViewSet, basename="venta")
+#router.register(r'detalleventa', DetalleVentaSerializer, basename="detalleventa")
 router.register(r'calificaciones', CalificacionServicioViewSet, basename= "calificaciones")  # Nueva ruta para calificaciones
 
 urlpatterns = [

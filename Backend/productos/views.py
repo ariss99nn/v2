@@ -12,9 +12,15 @@ class IsAdminOrEmployee(BasePermission):
 class CategoriaViewSet(viewsets.ModelViewSet):
     serializer_class = CategoriaSerializer
     queryset = Categoria.objects.all()
+    def get_permissions(self):
+        # Permitir acceso público a list y retrieve
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        # Solo admin y empleados para crear, actualizar, eliminar
+        return [IsAdminOrEmployee(), IsAuthenticated()]
+    #, 
     
 class ProductoViewSet(viewsets.ModelViewSet):
-    
     queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
 

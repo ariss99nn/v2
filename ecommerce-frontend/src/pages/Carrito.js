@@ -13,7 +13,7 @@ const Carrito = () => {
   useEffect(() => {
     const fetchCarrito = async () => {
       try {
-        const response = await api.get("/carrito-item");
+        const response = await api.get("/carrito-item/"); // Asegúrate de la URL correcta
         setProductos(response.data);
       } catch (error) {
         setError("Error al cargar los productos del carrito");
@@ -22,8 +22,14 @@ const Carrito = () => {
         setCargando(false);
       }
     };
-    fetchCarrito();
-  });
+
+    if (user) { // Solo fetch si el usuario está autenticado
+      fetchCarrito();
+    } else {
+      setCargando(false);
+      setProductos([]); // Limpiar el carrito si no hay usuario
+    }
+  }, [user]); // ✅ Lista de dependencias: solo se ejecuta cuando cambia 'user'
 
   return (
     <div className="carrito-container">
@@ -43,8 +49,12 @@ const Carrito = () => {
         <div className="productos-carrito">
           {productos.map((producto, index) => (
             <div key={index} className="producto-carrito">
-              <h3>{producto.nombre}</h3>
-              <p>Precio: ${producto.precio}</p>
+              {producto.producto && ( // ✅ Asegúrate de que 'producto' y 'producto.nombre' existan
+                <>
+                  <p>{producto.producto.nombre}</p>
+                  <p>Precio: ${producto.producto.precio}</p>
+                </>
+              )}
               <p>Cantidad: {producto.cantidad}</p>
             </div>
           ))}

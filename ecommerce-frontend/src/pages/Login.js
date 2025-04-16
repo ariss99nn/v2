@@ -23,7 +23,8 @@ const Login = () => {
           Authorization: `Bearer ${token}`, // Si tu backend usa JWT
         },
       });
-      console.log("Carrito creado para el usuario:", response.data);
+      alert("carrito creado para el usuario");
+      //console.log("Carrito creado para el usuario:", response.data);
       // No necesitamos hacer nada más con la respuesta aquí, el carrito ya está creado en el backend
     } catch (error) {
       console.error("Error al crear el carrito:", error.response?.data || error.message);

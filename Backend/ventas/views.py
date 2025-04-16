@@ -5,7 +5,7 @@ from django.db.models import Sum, Count
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .models import Carrito, CarritoItem, Venta, DetalleVenta, CalificacionServicio
-from .serializers import CarritoSerializer, CarritoItemSerializer, VentaSerializer, CalificacionServicioSerializer
+from .serializers import CarritoSerializer, CarritoItemSerializer, VentaSerializer, CalificacionServicioSerializer, DetalleVentaSerializer
 from productos.views import IsAdminOrEmployee
 from inventario.models import Inventario
 
@@ -24,8 +24,14 @@ class CarritoItemViewSet(viewsets.ModelViewSet):
     serializer_class = CarritoItemSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        # Obtiene el carrito del usuario actual
+        carrito = get_object_or_404(Carrito, usuario=self.request.user)
+        # Filtra los CarritoItem que pertenecen a ese carrito
+        return CarritoItem.objects.filter(carrito=carrito)
+
     def create(self, request):
-        carrito, _ = Carrito.objects.get_or_create(usuario=request.user)
+        carrito = get_object_or_404(Carrito, usuario=request.user)  # Obtener o crear el carrito aquí
         producto_id = request.data.get("producto")
         cantidad = int(request.data.get("cantidad", 1))
 
@@ -35,14 +41,50 @@ class CarritoItemViewSet(viewsets.ModelViewSet):
             item.save()
 
         return Response(CarritoItemSerializer(item).data)
+    
+    def destroy(self, request, pk=None):
+        try:
+            item = get_object_or_404(CarritoItem, pk=pk, carrito__usuario=request.user)
+            item.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except CarritoItem.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+class DetalleVentaViewSet(viewsets.ModelViewSet):
+    queryset = DetalleVenta.objects.all()
+    serializer_class = DetalleVentaSerializer
+    permission_classes = [IsAuthenticated, IsAdminOrEmployee] # Ajusta los permisos según tus necesidades
+
+    # Opcionalmente, puedes personalizar el comportamiento de los métodos create, update, etc.
+    # Si la lógica por defecto de ModelViewSet es suficiente, no necesitas implementarlos.
+
+    # Ejemplo de personalización del método create:
+    # def create(self, request, *args, **kwargs):
+    #     serializer = self.get_serializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
+    #     self.perform_create(serializer)
+    #     headers = self.get_success_headers(serializer.data)
+    #     return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    # Ejemplo de cómo podrías filtrar los detalles de venta por un ID de venta específico:
+    # @action(detail=False, methods=['get'])
+    # def por_venta(self, request):
+    #     venta_id = request.query_params.get('venta_id')
+    #     if venta_id:
+    #         detalles = DetalleVenta.objects.filter(venta_id=venta_id)
+    #         serializer = self.get_serializer(detalles, many=True)
+    #         return Response(serializer.data)
+    #     else:
+    #         return Response({"error": "Se debe proporcionar el ID de la venta."}, status=status.HTTP_400_BAD_REQUEST)
 
 class VentaViewSet(viewsets.ModelViewSet):
     queryset= Venta.objects.all()
     serializer_class = VentaSerializer
     permission_classes = [IsAuthenticated, IsAdminOrEmployee]
-    
+
     def perform_create(self, serializer):
         serializer.save(usuario=self.request.user)
+
     def create(self, request):
         carrito = get_object_or_404(Carrito, usuario=request.user)
         if not carrito.carritoitem_set.exists():
@@ -55,16 +97,17 @@ class VentaViewSet(viewsets.ModelViewSet):
                 producto=item.producto,
                 cantidad=item.cantidad,
                 precio_unitario=item.producto.precio,
-            )   
+            )
         # Actualizar stock del producto e inventario
-            producto = item.producto
-            producto.stock -= item.cantidad
-            producto.save()
-            inventario = Inventario.objects.get(producto=producto)
-            inventario.cantidad = producto.stock
-            inventario.save()
+        producto = item.producto
+        producto.stock -= item.cantidad
+        producto.save()
+        inventario = Inventario.objects.get(producto=producto)
+        inventario.cantidad = producto.stock
+        inventario.save()
         carrito.carritoitem_set.all().delete()
         return Response(VentaSerializer(venta).data)
+
 class CalificacionServicioViewSet(viewsets.ModelViewSet):
     queryset = CalificacionServicio.objects.all()
     serializer_class = CalificacionServicioSerializer
@@ -73,6 +116,7 @@ class CalificacionServicioViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Si deseas que la venta esté asociada al usuario actual, puedes validar aquí
         serializer.save()
+
 # Reporte General de Ventas: Total de ventas e ingresos acumulados
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -83,6 +127,7 @@ def reporte_ventas(request):
         "total_ventas": total_ventas,
         "ingresos_totales": ingresos_totales
     })
+
 # Reporte de Ventas por Usuario: Ventas agrupadas por usuario
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -93,6 +138,7 @@ def reporte_ventas_usuario(request):
         cantidad_ventas=Count('id')
     ).order_by('-total_ventas')
     return Response(ventas_por_usuario)
+
 # Reporte de Productos Más Vendidos: Lista de productos ordenados por cantidad vendida
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

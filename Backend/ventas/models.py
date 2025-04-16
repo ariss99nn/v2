@@ -3,7 +3,7 @@ from usuarios.models import Usuario
 from productos.models import Producto
 class Venta(models.Model):
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
-    total = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    total = models.DecimalField(max_digits=10, decimal_places=3, default=0.00)
     fecha = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f"Venta {self.id} - {self.usuario.username} -Total: ${self.total}" 

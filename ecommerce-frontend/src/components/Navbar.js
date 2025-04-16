@@ -27,8 +27,8 @@ const Navbar = () => {
         {(esEmpleado || esAdmin) && (
           <>
             <li><Link to="/admin/productos">Gestionar Productos</Link></li>
-            <li><Link to="/admin/inventario">Inventario</Link></li>
-            <li><Link to="/admin/reportes">Reportes</Link></li>
+            <li><Link to="/Inventario">Inventario</Link></li>
+            <li><Link to="/reportes">Reportes</Link></li>
           </>
         )}
 

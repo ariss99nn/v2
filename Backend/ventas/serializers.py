@@ -2,17 +2,20 @@ from rest_framework import serializers
 from inventario.models import Inventario
 from productos.models import Producto
 from .models import Carrito, CarritoItem, Venta, DetalleVenta, CalificacionServicio
-
-class CarritoItemSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CarritoItem
-        fields = '__all__'
+from productos.serializers import ProductoSerializer  # Asegúrate de la ruta correcta
 
 class CarritoSerializer(serializers.ModelSerializer):
-    items = CarritoItemSerializer(many=True, source="carritoitem_set", read_only=True)
     class Meta:
         model = Carrito
-        fields = ['id', 'usuario', 'items']
+        fields = ['id', 'usuario']
+
+class CarritoItemSerializer(serializers.ModelSerializer):
+    producto = ProductoSerializer(read_only=True)  # Serializa los datos del producto
+
+    class Meta:
+        model = CarritoItem
+        fields = ['id', 'producto', 'cantidad']
+        read_only_fields = ['carrito']
 
 class DetalleVentaSerializer(serializers.ModelSerializer):
     producto = serializers.PrimaryKeyRelatedField(queryset=Producto.objects.all())

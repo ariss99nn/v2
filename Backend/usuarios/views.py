@@ -18,6 +18,7 @@ User = get_user_model()
 
 # Vista para registrar usuarios
 class RegistroUsuarioView(APIView):
+    
     permission_classes = [AllowAny]
     def post(self, request):
         username = request.data.get('username')
