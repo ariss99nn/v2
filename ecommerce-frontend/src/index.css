@@ -1,13 +1,9 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Playfair Display', serif; /* Una fuente serif elegante */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  background-color: #f8f8f8; /* Un fondo gris muy claro y suave */
+  color: #333; /* Color de texto principal oscuro */
+  line-height: 1.7; /* Un poco más de espacio entre líneas para elegancia */
 }

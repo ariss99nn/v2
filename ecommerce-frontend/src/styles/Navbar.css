@@ -3,7 +3,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 20px;
-    background-color: #333;
+    background-color: #28a745;
     color: white;
 }
 
@@ -19,5 +19,5 @@
 }
 
 .nav-links a:hover {
-    text-decoration: underline;
+    text-decoration: none;
 }

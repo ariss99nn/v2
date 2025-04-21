@@ -13,6 +13,9 @@ import ProductoDetalle from "./pages/ProductoDetalle";
 import Registro from "./pages/Registro";
 import ProductosCategoria from "./pages/ProductoCategoria";
 import Venta from "./pages/Venta";
+import Reportes from "./pages/Reportes"
+import ProductoGestion from "./pages/ProductoGestion";
+import FinalizarCompra from "./pages/FinalizarCompra";
 
 const App = () => {
   return (
@@ -25,14 +28,16 @@ const App = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Registro />} />
             <Route path="/productos" element={<Productos />} />
+            <Route path="/productos/categoria/:categoriaId" element={<ProductosCategoria />} />
             <Route path="/productos/:id" element={<ProductoDetalle />} />
             <Route path="/inventario" element={<Inventario />} />
             <Route path="/carrito" element={<Carrito />} />
             <Route path="/perfil" element={<Perfil />} />
             <Route path="/productodetalle" element={<ProductoDetalle />} />
-            <Route path="/productocategoria" element={<ProductosCategoria />} />
-
+            <Route path="/reportes" element={<Reportes/>} />
+            <Route path="/productogestion" element={<ProductoGestion/>}/>
             <Route path="/venta" element={<Venta />} />
+            <Route path ="/finalizarcompra" element={<FinalizarCompra/>}/>
           </Routes>
         </div>
         <Footer />

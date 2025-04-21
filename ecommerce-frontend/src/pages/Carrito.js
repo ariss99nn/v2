@@ -43,8 +43,8 @@ const Carrito = () => {
     }
   };
 
-  const handleComprarCarrito = () => {
-    navigate("/Venta");
+  const handleFinalizarCompra = () => {
+    navigate("/FinalizarCompra"); // Redirigir a un nuevo componente para finalizar la compra
   };
 
   return (
@@ -80,8 +80,8 @@ const Carrito = () => {
               </button>
             </div>
           ))}
-          <button className="comprar-button" onClick={handleComprarCarrito}>
-            Comprar Carrito
+          <button className="comprar-button" onClick={handleFinalizarCompra}>
+            Finalizar Compra
           </button>
         </div>
       )}

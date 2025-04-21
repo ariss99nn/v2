@@ -1,0 +1,92 @@
+.reportes-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    background-color: #f4f4f4; /* Fondo gris claro, igual que en login/registro */
+    min-height: 100vh; /* Para que ocupe toda la altura si es necesario */
+  }
+  
+  h2 {
+    color: #333; /* Gris oscuro para los títulos */
+    margin-bottom: 25px;
+    font-size: 2em; /* Ligeramente más pequeño que el título del login/registro */
+    font-weight: 300;
+    text-align: center;
+  }
+  
+  .reporte-item {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Sombra sutil */
+    margin-bottom: 20px;
+    width: 100%;
+    max-width: 600px; /* Un ancho máximo razonable para los reportes */
+  }
+  
+  .reporte-item p {
+    color: #555; /* Texto general en gris medio */
+    margin-bottom: 10px;
+    font-size: 1em;
+  }
+  
+  .reporte-item strong {
+    font-weight: bold;
+    color: #333; /* Destacar información importante */
+  }
+  
+  .reporte-lista {
+    list-style: none;
+    padding: 0;
+    width: 100%;
+    max-width: 600px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+    padding: 20px;
+  }
+  
+  .reporte-lista li {
+    border-bottom: 1px solid #eee; /* Separador entre elementos de la lista */
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .reporte-lista li:last-child {
+    border-bottom: none; /* Quitar el borde del último elemento */
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+  
+  .reporte-lista li strong {
+    font-weight: bold;
+    color: #333;
+    display: block; /* Para que ocupe toda la línea */
+    margin-bottom: 5px;
+  }
+  
+  .reporte-lista li ul {
+    list-style: none;
+    padding-left: 20px;
+    margin-top: 5px;
+  }
+  
+  .reporte-lista li ul li {
+    border-bottom: none;
+    padding-bottom: 5px;
+    margin-bottom: 5px;
+  }
+  
+  .error-message {
+    color: #dc3545; /* Rojo para mensajes de error, igual que en login/registro */
+    margin-top: 20px;
+    text-align: center;
+    font-weight: bold;
+  }
+  
+  p {
+    color: #555; /* Estilo general para los párrafos */
+    text-align: center; /* Centrar el mensaje de "Cargando..." y "No hay datos..." */
+  }

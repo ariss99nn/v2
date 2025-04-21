@@ -22,13 +22,14 @@ const Navbar = () => {
         <li><Link to="/">Inicio</Link></li>
         <li><Link to="/productos">Productos</Link></li>
         <li><Link to="/carrito">Carrito</Link></li>
+        <li><Link to="/perfil">Perfil</Link></li>
 
         {/* Links exclusivos para Admin o Empleado */}
         {(esEmpleado || esAdmin) && (
           <>
-            <li><Link to="/admin/productos">Gestionar Productos</Link></li>
+            <li><Link to="/ProductoGestion">Gestionar Productos</Link></li>
             <li><Link to="/Inventario">Inventario</Link></li>
-            <li><Link to="/reportes">Reportes</Link></li>
+            <li><Link to="/Reportes">Reportes</Link></li>
           </>
         )}
 

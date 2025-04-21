@@ -1,0 +1,75 @@
+.inventario-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    background-color: #f4f4f4; /* Fondo gris claro consistente */
+    min-height: 100vh;
+  }
+  
+  h1 {
+    color: #333; /* Gris oscuro para el título */
+    margin-bottom: 25px;
+    font-size: 2.2em; /* Tamaño ligeramente mayor para el título principal */
+    font-weight: 300;
+    text-align: center;
+  }
+  
+  .inventario-lista {
+    list-style: none;
+    padding: 0;
+    width: 100%;
+    max-width: 600px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Sombra sutil */
+    margin-bottom: 20px;
+    padding: 20px;
+  }
+  
+  .inventario-lista li {
+    border-bottom: 1px solid #eee; /* Separador entre items */
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .inventario-lista li:last-child {
+    border-bottom: none; /* Quitar el borde del último item */
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+  
+  .inventario-lista li p {
+    color: #555; /* Texto general */
+    margin-bottom: 5px;
+    font-size: 1em;
+  }
+  
+  .inventario-lista li p strong {
+    font-weight: bold;
+    color: #333; /* Destacar etiquetas */
+  }
+  
+  .inventario-lista li p:last-child {
+    margin-bottom: 0; /* Quitar el margen inferior del último párrafo en cada item */
+  }
+  
+  .inventario-vacio {
+    color: #777; /* Gris más claro para indicar que no hay datos */
+    text-align: center;
+    margin-top: 20px;
+    font-style: italic;
+  }
+  
+  .error-message {
+    color: #dc3545; /* Rojo para mensajes de error, consistente con otras páginas */
+    margin-top: 20px;
+    text-align: center;
+    font-weight: bold;
+  }
+  
+  .mensaje-sin-sesion {
+    color: #777;
+    text-align: center;
+    margin-top: 20px;
+  }

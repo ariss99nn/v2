@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from 'react';
 import axios from 'axios';
 import { UserContext } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
+import "../styles/Inventario.css";
 
 const Inventario = () => {
   const { user, token } = useContext(UserContext); // ✅ Obtén el usuario y el token del contexto

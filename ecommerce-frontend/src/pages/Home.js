@@ -3,7 +3,7 @@ import api from '../services/api';
 import { Link } from 'react-router-dom';
 import { UserContext } from '../context/UserContext';
 import '../styles/Home.css';
-import '../styles/ProductosCategoria.css';
+
 
 const Home = () => {
   const { user } = useContext(UserContext);
@@ -28,8 +28,8 @@ const Home = () => {
   }, []);
 
   return (
-    <div className="home-container">
-      <h1>Bienvenido a la Tienda</h1>
+    <div className="productos-categoria-container"> {/* Usamos la clase del contenedor de ProductosCategoria */}
+      <h1>Nuestras Categorías</h1> {/* Modificamos el título */}
 
       {!user && (
         <p>
@@ -39,23 +39,23 @@ const Home = () => {
 
       {error && <p style={{ color: 'blue' }}>{error}</p>}
 
-      <div className="categorias-container">
-        <h2>Nuestras Categorías</h2>
-
+      <div className="productos-grid"> {/* Usamos la clase del grid de ProductosCategoria */}
         {cargando ? (
           <p>Cargando categorías...</p>
         ) : categorias.length === 0 ? (
           <p>No hay categorías disponibles</p>
         ) : (
-          <div className="categorias-grid">
-            {categorias.map((categoria) => (
-              <div key={categoria.id} className="categoria-card">
-                <h3>{categoria.nombre}</h3>
-                {/* Enlace ahora pasa el ID de la categoría como parte de la ruta */}
-                <Link to={`/productos/categoria/${categoria.id}`}>Ver Productos</Link>
+          categorias.map((categoria) => (
+            <div key={categoria.id} className="producto-card"> {/* Usamos la clase de la tarjeta de Producto */}
+              <h3>{categoria.nombre}</h3> {/* El nombre de la categoría como título */}
+              {/* Enlace con el estilo de botón */}
+              <div className="producto-actions"> {/* Usamos el contenedor de acciones de Producto */}
+                <Link to={`/productos/categoria/${categoria.id}`} className="producto-actions button">
+                  Ver Productos
+                </Link>
               </div>
-            ))}
-          </div>
+            </div>
+          ))
         )}
       </div>
     </div>

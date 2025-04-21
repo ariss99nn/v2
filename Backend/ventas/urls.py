@@ -6,11 +6,11 @@ router = DefaultRouter()
 router.register(r'carrito', CarritoViewSet, basename="carrito")
 router.register(r'carrito-item', CarritoItemViewSet, basename="carrito-item")
 router.register(r'venta', VentaViewSet, basename="venta")
-router.register(r'calificaciones', CalificacionServicioViewSet, basename="calificaciones")  # Nueva ruta para calificaciones
+router.register(r'calificaciones', CalificacionServicioViewSet, basename="calificaciones")
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('reporte/ventas/', reporte_ventas, name='reporte_ventas'),
-    path('reporte/ventas-usuario/', reporte_ventas_usuario, name='reporte_ventas_usuario'),
-    path('reporte/productos-mas-vendidos/', reporte_productos_mas_vendidos, name='reporte_productos_mas_vendidos'),
+    path('reportes/ventas/', reporte_ventas, name='reporte_ventas'),  # ✅ Cambiado a 'reportes/ventas/'
+    path('reportes/ventas-usuario/', reporte_ventas_usuario, name='reporte_ventas_usuario'),  # ✅ Cambiado a 'reportes/ventas-usuario/'
+    path('reportes/productos-mas-vendidos/', reporte_productos_mas_vendidos, name='reporte_productos_mas_vendidos'),  # ✅ Cambiado a 'reportes/productos-mas-vendidos/'
 ]
