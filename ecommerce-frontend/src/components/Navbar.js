@@ -22,7 +22,11 @@ const Navbar = () => {
         <li><Link to="/">Inicio</Link></li>
         <li><Link to="/productos">Productos</Link></li>
         <li><Link to="/carrito">Carrito</Link></li>
-        <li><Link to="/perfil">Perfil</Link></li>
+
+        {/* Mostrar el enlace de perfil solo si el usuario está logueado */}
+        {user && (
+          <li><Link to="/perfil">Perfil</Link></li>
+        )}
 
         {/* Links exclusivos para Admin o Empleado */}
         {(esEmpleado || esAdmin) && (
@@ -39,7 +43,6 @@ const Navbar = () => {
               <span>
                 <strong>{user.username}</strong> (<em>{user.rol}</em>)
               </span>
-              
               <button className="btn" onClick={handleLogout}>Cerrar Sesión</button>
             </div>
           ) : (

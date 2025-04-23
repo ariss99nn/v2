@@ -14,6 +14,7 @@ from .serializers import UsuarioSerializer
 from rest_framework import serializers
 
 
+
 User = get_user_model()
 
 # Vista para registrar usuarios
@@ -51,20 +52,25 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         identificador = attrs.get("username")  # puede ser username o email
         password = attrs.get("password")
+        print(f"Intento de login con identificador: '{identificador}' y contraseña: '{password}'")
 
         try:
-            user = User.objects.get(Q(username=identificador) | Q(email=identificador))
+            user = User.objects.get(Q(username__iexact=identificador) | Q(email__iexact=identificador))
+            print(f"Usuario encontrado (username: '{user.username}', email: '{user.email}', is_active: {user.is_active})")
         except User.DoesNotExist:
+            print(f"Usuario con identificador '{identificador}' no encontrado")
             raise serializers.ValidationError(_("Usuario o contraseña incorrectos"))
 
         credentials = {
-            "username": user.username,
-            "password": password,
+        "username": user.username,
+        "password": password,
         }
 
-        user = authenticate(**credentials)
+        authenticated_user = authenticate(**credentials)
+        print(f"Resultado de authenticate(): {authenticated_user}")
 
-        if user is None:
+        if authenticated_user is None:
+            print("Autenticación fallida")
             raise serializers.ValidationError(_("Usuario o contraseña incorrectos"))
 
         data = super().validate({

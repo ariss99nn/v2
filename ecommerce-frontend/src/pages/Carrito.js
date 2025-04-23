@@ -43,6 +43,34 @@ const Carrito = () => {
     }
   };
 
+  const handleCantidadChange = (event, itemId) => {
+    const newCantidad = parseInt(event.target.value, 10);
+    if (!isNaN(newCantidad) && newCantidad > 0) {
+      const updatedProductos = productos.map(producto =>
+        producto.id === itemId ? { ...producto, cantidad: newCantidad } : producto
+      );
+      setProductos(updatedProductos);
+    }
+  };
+
+  const handleUpdateCantidad = async (itemId, nuevaCantidad) => {
+    try {
+      await api.patch(`/carrito-item/${itemId}/`, { cantidad: nuevaCantidad });
+      // Opcional: Mostrar un mensaje de éxito al usuario
+    } catch (error) {
+      console.error("Error al actualizar la cantidad del producto:", error);
+      setError("Error al actualizar la cantidad del producto");
+      // Opcional: Revertir la cantidad en el estado local si la actualización falla
+      const originalProducto = productos.find(p => p.id === itemId);
+      if (originalProducto) {
+        const updatedProductos = productos.map(p =>
+          p.id === itemId ? { ...p, cantidad: originalProducto.cantidad } : p
+        );
+        setProductos(updatedProductos);
+      }
+    }
+  };
+
   const handleFinalizarCompra = () => {
     navigate("/FinalizarCompra"); // Redirigir a un nuevo componente para finalizar la compra
   };
@@ -74,7 +102,17 @@ const Carrito = () => {
                   )}
                 </>
               )}
-              <p>Cantidad: {producto.cantidad}</p>
+              <div className="cantidad-selector">
+                <label htmlFor={`cantidad-${producto.id}`}>Cantidad:</label>
+                <input
+                  type="number"
+                  id={`cantidad-${producto.id}`}
+                  value={producto.cantidad}
+                  min="1"
+                  onChange={(event) => handleCantidadChange(event, producto.id)}
+                  onBlur={() => handleUpdateCantidad(producto.id, producto.cantidad)}
+                />
+              </div>
               <button onClick={() => handleRemoveProducto(producto.id)}>
                 Remover
               </button>
