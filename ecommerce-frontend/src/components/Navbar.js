@@ -17,7 +17,7 @@ const Navbar = () => {
 
   return (
     <nav className="navbar">
-      <h1 className="logo">Mi eCommerce</h1>
+      <h1 className="logo">PACIFIKA</h1>
       <ul className="nav-links">
         <li><Link to="/">Inicio</Link></li>
         <li><Link to="/productos">Productos</Link></li>

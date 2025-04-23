@@ -3,7 +3,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 20px;
-    background-color: #28a745;
+    background-color: black;
     color: white;
 }
 
@@ -20,4 +20,7 @@
 
 .nav-links a:hover {
     text-decoration: none;
+}
+h1.logo {
+    color: gainsboro;
 }

@@ -1,9 +1,17 @@
+body {
+  background-image: url('../img/fondo.jpg');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
 .reportes-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 20px;
-    background-color: #f4f4f4; /* Fondo gris claro, igual que en login/registro */
+    background-color: transparent; /* Fondo gris claro, igual que en login/registro */
     min-height: 100vh; /* Para que ocupe toda la altura si es necesario */
   }
   
