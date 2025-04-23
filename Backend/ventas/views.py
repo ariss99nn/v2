@@ -77,6 +77,48 @@ class DetalleVentaViewSet(viewsets.ModelViewSet):
     #     else:
     #         return Response({"error": "Se debe proporcionar el ID de la venta."}, status=status.HTTP_400_BAD_REQUEST)
 
+class FinalizarCompraView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = VentaCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            metodo_pago = serializer.validated_data.get('metodo_pago')
+            detalles_pago = serializer.validated_data.get('detalles_pago')
+
+            # *** Lógica REAL del Carrito y Cálculo del Total ***
+            # Aquí debes acceder a la información del carrito del usuario
+            # (probablemente desde la sesión, base de datos o un estado en el frontend
+            # que se envía en la petición).
+            #
+            # Simulación de datos del carrito:
+            carrito_items = [
+                {'producto_id': 1, 'cantidad': 2, 'precio_unitario': 20.00},
+                {'producto_id': 3, 'cantidad': 1, 'precio_unitario': 55.75},
+            ]
+
+            total_venta = sum(item['cantidad'] * item['precio_unitario'] for item in carrito_items)
+
+            venta = Venta.objects.create(
+                usuario=request.user,
+                total=total_venta,
+                metodo_pago=metodo_pago,
+                detalles_pago=detalles_pago
+            )
+
+            # Crear los detalles de la venta basados en los items del carrito
+            for item in carrito_items:
+                ItemVenta.objects.create(
+                    venta=venta,
+                    producto=item['producto_id'],
+                    cantidad=item['cantidad'],
+                    precio_unitario=item['precio_unitario']
+                )
+
+            venta_serializer = VentaSerializer(venta)
+            return Response(venta_serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 class VentaViewSet(viewsets.ModelViewSet):
     queryset= Venta.objects.all()
     serializer_class = VentaSerializer

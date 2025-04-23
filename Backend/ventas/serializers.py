@@ -29,7 +29,7 @@ class VentaSerializer(serializers.ModelSerializer):
     detalles = DetalleVentaSerializer(many=True, source="detalleventa_set", write_only=True)
     class Meta:
         model = Venta
-        fields = ['id', 'usuario', 'fecha', 'total', 'detalles']
+        fields = ['id', 'usuario', 'fecha', 'total','metodo_pago', 'detalles_pago' 'detalles']
          
     def create(self, validated_data):
         # Extraemos los detalles usando la clave correcta
@@ -57,6 +57,10 @@ class VentaSerializer(serializers.ModelSerializer):
         venta.save()
         return venta
     
+class VentaCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Venta
+        fields = ['metodo_pago', 'detalles_pago']
 class CalificacionServicioSerializer(serializers.ModelSerializer):
     class Meta:
         model = CalificacionServicio

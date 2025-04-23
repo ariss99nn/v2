@@ -5,6 +5,8 @@ class Venta(models.Model):
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
     total = models.DecimalField(max_digits=10, decimal_places=3, default=0.00)
     fecha = models.DateTimeField(auto_now_add=True)
+    metodo_pago = models.CharField(max_length=50, blank=True, null=True)
+    detalles_pago = models.JSONField(blank=True, null=True)
     def __str__(self):
         return f"Venta {self.id} - {self.usuario.username} -Total: ${self.total}" 
 class Carrito(models.Model):
