@@ -628,3 +628,219 @@ def reporte_productos_mas_vendidos(request):
     setProductoForm({...productoForm, categoria: e.target.alue})
 }} required>
 
+
+
+
+¡Entendido! Vamos a modificar el modelo Usuario, su serializador y las vistas relacionadas para incluir los campos adicionales que necesitas: nombre, apellido, direccion, telefono, y cedula.
+
+1. Modificar el Modelo Usuario (usuarios/models.py):
+
+Python
+
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+
+class Usuario(AbstractUser):
+    ADMIN = 'ADMIN'
+    EMPLOYEE = 'EMPLOYEE'
+    CLIENT = 'CLIENT'
+    ROLES = (
+        (ADMIN, 'Administrador'),
+        (EMPLOYEE, 'Empleado'),
+        (CLIENT, 'Cliente'),
+    )
+    rol = models.CharField(max_length=10, choices=ROLES, default='CLIENT')
+    nombre = models.CharField(max_length=100, blank=True, null=True)
+    apellido = models.CharField(max_length=100, blank=True, null=True)
+    direccion = models.CharField(max_length=255, blank=True, null=True)
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    cedula = models.CharField(max_length=20, unique=True, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.username} - {self.rol}"
+Cambios en el Modelo:
+
+Se agregaron los siguientes campos:
+nombre: Para el nombre del usuario (CharField).
+apellido: Para el apellido del usuario (CharField).
+direccion: Para la dirección del usuario (CharField).
+telefono: Para el número de teléfono del usuario (CharField).
+cedula: Para el número de cédula/identificación del usuario (CharField), con la restricción de ser unique.
+Se establecieron blank=True y null=True para permitir que estos campos no sean obligatorios al crear un usuario inicialmente (por ejemplo, durante el registro básico). Puedes ajustar esto según tus requerimientos.
+2. Modificar el Serializador UsuarioSerializer (usuarios/serializers.py):
+
+Python
+
+from rest_framework import serializers
+from .models import Usuario
+
+class UsuarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Usuario
+        fields = ['id', 'username', 'password', 'email', 'rol', 'nombre', 'apellido', 'direccion', 'telefono', 'cedula']
+        extra_kwargs = {'password': {'write_only': True}} # Mantén la contraseña solo para escritura
+Cambios en el Serializador:
+
+Se agregaron los nuevos campos (nombre, apellido, direccion, telefono, cedula) a la lista de fields para que puedan ser serializados y deserializados.
+Se mantiene extra_kwargs para que la contraseña siga siendo solo para escritura.
+3. Modificar las Vistas (usuarios/views.py):
+
+a) RegistroUsuarioView: Necesitamos permitir que se reciban y guarden los nuevos campos durante el registro.
+
+Python
+
+from django.shortcuts import render
+from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate
+from rest_framework import viewsets, status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.utils.translation import gettext_lazy as _
+from django.db.models import Q
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .models import Usuario
+from .serializers import UsuarioSerializer
+from rest_framework import serializers
+
+
+User = get_user_model()
+
+# Vista para registrar usuarios
+class RegistroUsuarioView(APIView):
+
+    permission_classes = [AllowAny]
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        email = request.data.get('email')
+        rol = request.data.get('rol', 'CLIENT')  # Por defecto, Cliente
+        nombre = request.data.get('nombre')
+        apellido = request.data.get('apellido')
+        direccion = request.data.get('direccion')
+        telefono = request.data.get('telefono')
+        cedula = request.data.get('cedula')
+
+        if not username:
+            return Response({"error": "El campo 'username' es obligatorio."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if User.objects.filter(username=username).exists():
+            return Response({'error': 'El usuario ya existe'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.create_user(username=username, password=password, email=email, rol=rol,
+                                       nombre=nombre, apellido=apellido, direccion=direccion,
+                                       telefono=telefono, cedula=cedula)
+        user.save()
+
+        return Response({'mensaje': 'Usuario creado correctamente'}, status=status.HTTP_201_CREATED)
+Cambios en RegistroUsuarioView:
+
+Se obtienen los valores de los nuevos campos (nombre, apellido, direccion, telefono, cedula) del request.data.
+Estos campos se pasan como argumentos al método User.objects.create_user() para que se guarden al crear el nuevo usuario.
+b) CustomTokenObtainPairSerializer: Queremos incluir los nuevos datos del usuario en la respuesta del login.
+
+Python
+
+from django.shortcuts import render
+from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate
+from rest_framework import viewsets, status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.utils.translation import gettext_lazy as _
+from django.db.models import Q
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .models import Usuario
+from .serializers import UsuarioSerializer
+from rest_framework import serializers
+
+
+User = get_user_model()
+
+# Vista para registrar usuarios
+class RegistroUsuarioView(APIView):
+    # ... (sin cambios aquí, ya se modificó arriba)
+    pass
+
+# Vista personalizada para login con JWT + datos de usuario
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    username_field = User.USERNAME_FIELD
+
+    def validate(self, attrs):
+        identificador = attrs.get("username")  # puede ser username o email
+        password = attrs.get("password")
+
+        try:
+            user = User.objects.get(Q(username=identificador) | Q(email=identificador))
+        except User.DoesNotExist:
+            raise serializers.ValidationError(_("Usuario o contraseña incorrectos"))
+
+        credentials = {
+            "username": user.username,
+            "password": password,
+        }
+
+        user = authenticate(**credentials)
+
+        if user is None:
+            raise serializers.ValidationError(_("Usuario o contraseña incorrectos"))
+
+        data = super().validate({
+            "username": user.username,
+            "password": password
+        })
+
+        # Datos adicionales
+        data.update({
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "rol": user.rol,
+                "is_staff": user.is_staff,
+                "nombre": user.nombre,
+                "apellido": user.apellido,
+                "direccion": user.direccion,
+                "telefono": user.telefono,
+                "cedula": user.cedula,
+            }
+        })
+
+        return data
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
+# VistaSet para manejar usuarios si se requiere en admin/CRUD/API
+class UsuarioViewSet(viewsets.ModelViewSet):
+    queryset = Usuario.objects.all()
+    serializer_class = UsuarioSerializer
+Cambios en CustomTokenObtainPairSerializer:
+
+Se agregaron los nuevos campos del usuario (nombre, apellido, direccion, telefono, cedula) al diccionario que se incluye bajo la clave "user" en la respuesta del login.
+c) UsuarioViewSet: Este ViewSet se utiliza para operaciones CRUD en los usuarios (si lo necesitas en tu API o panel de administración). Ya está utilizando el UsuarioSerializer actualizado, por lo que debería manejar los nuevos campos automáticamente.
+
+4. Adaptar los Archivos Relacionados a Usuario:
+
+Carrito Model (ventas/models.py): La relación con Usuario es a través de una ForeignKey o OneToOneField. No necesitas cambiar la definición de la relación, pero cuando accedas al usuario desde un objeto Carrito, los nuevos campos estarán disponibles (ej., carrito.usuario.nombre).
+
+Venta Model (ventas/models.py): Similar al Carrito, la relación con Usuario permitirá acceder a los nuevos campos del usuario que realizó la venta (ej., venta.usuario.apellido).
+
+Otros Modelos: Cualquier otro modelo que tenga una relación con Usuario podrá acceder a estos nuevos campos a través de la instancia del usuario relacionado.
+
+Serializadores Relacionados: Si tienes otros serializadores que incluyen información del usuario (por ejemplo, un serializador de Carrito que muestra el usuario), asegúrate de que estén utilizando el UsuarioSerializer o que incluyan los campos específicos que necesiten de la instancia del usuario.
+
+5. Migraciones:
+
+Después de modificar el modelo Usuario, es crucial que ejecutes las migraciones para aplicar los cambios a tu base de datos:
+
+Bash
+
+python manage.py makemigrations usuarios
+python manage.py migrate
+Esto creará las nuevas columnas en la tabla de usuarios de tu base de datos.
+
+En resumen, estos pasos te permitirán ampliar la información de tu modelo Usuario y asegurarte de que estos nuevos campos se utilicen correctamente en tu serializador y en las vistas relacionadas, incluyendo el registro y el login. Recuerda adaptar cualquier otra parte de tu código que interactúe con el modelo Usuario para utilizar estos nuevos campos si es necesario.

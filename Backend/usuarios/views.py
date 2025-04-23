@@ -18,21 +18,28 @@ User = get_user_model()
 
 # Vista para registrar usuarios
 class RegistroUsuarioView(APIView):
-    
+
     permission_classes = [AllowAny]
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
         email = request.data.get('email')
         rol = request.data.get('rol', 'CLIENT')  # Por defecto, Cliente
+        nombre = request.data.get('nombre')
+        apellido = request.data.get('apellido')
+        direccion = request.data.get('direccion')
+        telefono = request.data.get('telefono')
+        cedula = request.data.get('cedula')
 
         if not username:
             return Response({"error": "El campo 'username' es obligatorio."}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         if User.objects.filter(username=username).exists():
             return Response({'error': 'El usuario ya existe'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        user = User.objects.create_user(username=username, password=password, email=email, rol=rol)
+
+        user = User.objects.create_user(username=username, password=password, email=email, rol=rol,
+                                       nombre=nombre, apellido=apellido, direccion=direccion,
+                                       telefono=telefono, cedula=cedula)
         user.save()
 
         return Response({'mensaje': 'Usuario creado correctamente'}, status=status.HTTP_201_CREATED)
@@ -73,6 +80,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 "email": user.email,
                 "rol": user.rol,
                 "is_staff": user.is_staff,
+                "nombre": user.nombre,
+                "apellido": user.apellido,
+                "direccion": user.direccion,
+                "telefono": user.telefono,
+                "cedula": user.cedula,
             }
         })
 
