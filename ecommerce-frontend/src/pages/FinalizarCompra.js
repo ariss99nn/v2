@@ -1,101 +1,85 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../context/UserContext";
 import api from "../services/api";
-import "../styles/FinalizarCompra.css";
+import "../styles/FinalizarCompra.css"; // Importa estilos si los tienes
 
 const FinalizarCompra = () => {
-  const { user } = useContext(UserContext);
-  const [carritoItems, setCarritoItems] = useState(null);
+  const { token } = useContext(UserContext);
+  const [venta, setVenta] = useState(null);
   const [error, setError] = useState(null);
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchCarritoItems = async () => {
-      try {
-        const response = await api.get("/carrito-item/");
-        setCarritoItems(response.data);
-      } catch (err) {
-        setError(`Error al cargar el carrito: ${err.message}`);
-        console.error("Error al cargar el carrito:", err);
-      } finally {
-        setCargando(false);
-      }
-    };
-
-    if (user) {
-      fetchCarritoItems();
-    } else {
-      setCargando(false);
-      setError("Debes iniciar sesión para finalizar la compra.");
-    }
-  }, [user]);
-
   const handleConfirmarCompra = async () => {
-    if (!user) {
-      setError("Debes estar autenticado para finalizar la compra.");
-      return;
-    }
-    if (!carritoItems || carritoItems.length === 0) {
-      setError("El carrito está vacío. Agrega productos para comprar.");
-      return;
-    }
-
     setCargando(true);
     setError(null);
     try {
-      const response = await api.post("/venta/", {}); // Enviar POST vacío para crear la venta
-      console.log("Compra finalizada:", response.data);
-      alert("¡Compra finalizada con éxito!");
-      navigate("/Venta"); // Redirigir a la página de detalles de la venta (podrías querer navegar a una ruta específica con el ID de la venta)
-    } catch (err) {
-      setError(`Error al finalizar la compra: ${err.message}`);
-      console.error("Error al finalizar la compra:", err);
+      const response = await api.post(
+        "/venta/", // La URL para finalizar la compra (crear la venta)
+        {}, // El cuerpo de la petición está vacío según tu indicación
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // Incluye el token de autenticación
+          },
+        }
+      );
+      setVenta(response.data); // Guarda la información de la venta
+    } catch (error) {
+      console.error("Error al finalizar la compra:", error.response?.data || error.message);
+      setError("Hubo un error al finalizar la compra.");
     } finally {
       setCargando(false);
     }
   };
 
-  if (cargando) {
-    return <p>Cargando carrito para finalizar la compra...</p>;
-  }
-
-  if (error) {
-    return <p style={{ color: "red" }}>{error}</p>;
-  }
-
-  if (!carritoItems) {
-    return <p>No se pudieron cargar los items del carrito.</p>;
-  }
+  const handleVolverAlCarrito = () => {
+    navigate("/carrito");
+  };
 
   return (
     <div className="finalizar-compra-container">
-      <h1>Finalizar tu Compra</h1>
-      {carritoItems.length > 0 ? (
-        <div>
-          <h2>Revisa tu Carrito:</h2>
-          <ul>
-            {carritoItems.map((item) => (
-              <li key={item.id}>
-                {item.producto && (
-                  <>
-                    {item.producto.nombre} - Cantidad: {item.cantidad} - Precio: ${item.producto.precio.toFixed(2)} - Subtotal: ${(item.cantidad * item.producto.precio).toFixed(2)}
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-          <p>
-            Total a pagar: $
-            {carritoItems.reduce((total, item) => total + (item.producto ? item.cantidad * item.producto.precio : 0), 0).toFixed(2)}
-          </p>
-          <button onClick={handleConfirmarCompra}>Confirmar Compra</button>
+      <h1>Finalizar Compra</h1>
+
+      {cargando ? (
+        <p>Finalizando compra...</p>
+      ) : error ? (
+        <p className="error-message">{error}</p>
+      ) : venta ? (
+        <div className="venta-detalles">
+          <h2>Compra Exitosa 🎉</h2>
+          <p>ID de Venta: {venta.id}</p>
+          <p>Fecha: {new Date(venta.fecha).toLocaleString()}</p>
+          <p>Total: ${venta.total}</p>
+
+          <h3>Detalles de la Compra:</h3>
+          {venta.detalles && venta.detalles.length > 0 ? (
+            <ul className="detalles-lista">
+              {venta.detalles.map((detalle) => (
+                <li key={detalle.id} className="detalle-item">
+                  {detalle.producto && <p>Producto ID: {detalle.producto}</p>}
+                  <p>Cantidad: {detalle.cantidad}</p>
+                  <p>Precio Unitario: ${detalle.precio_unitario}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No hay detalles de productos en esta venta.</p>
+          )}
+
+          <button onClick={() => navigate("/productos")}>Volver a Productos</button>
         </div>
       ) : (
-        <p>Tu carrito está vacío.</p>
+        <div className="confirmar-compra">
+          <p>¿Estás seguro de que deseas finalizar la compra?</p>
+          <button className="confirmar-button" onClick={handleConfirmarCompra} disabled={cargando}>
+            {cargando ? "Finalizando..." : "Confirmar Compra"}
+          </button>
+          <button className="volver-button" onClick={handleVolverAlCarrito}>
+            Volver al Carrito
+          </button>
+        </div>
       )}
-      <button onClick={() => navigate("/carrito")}>Volver al Carrito</button>
     </div>
   );
 };

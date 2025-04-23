@@ -658,7 +658,7 @@ print(user.groups.all())
 --Consultar los grupos de roles
 from django.contrib.auth.models import Group
 print(Group.objects.all())  # Debe mostrar solo: ADMIN, EMPLOYEE, CLIENT
-
+ALTER DATABASE ecommerce_db REFRESH COLLATION VERSION
 
 --Eliminar las migraciones
 Remove-Item -Recurse -Force usuarios\migrations
@@ -757,6 +757,7 @@ Agrega un producto al carrito del usuario actual.
 Si el producto ya está en el carrito, aumenta su cantidad.
 Método: POST
 URL: http://127.0.0.1:8000/carrito-item/
+
 Body:
 {
   "producto": 2,

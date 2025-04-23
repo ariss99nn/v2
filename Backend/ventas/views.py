@@ -91,22 +91,32 @@ class VentaViewSet(viewsets.ModelViewSet):
             return Response({"error": "Carrito vacío"}, status=status.HTTP_400_BAD_REQUEST)
         total = sum(item.subtotal() for item in carrito.carritoitem_set.all())
         venta = Venta.objects.create(usuario=request.user, total=total)
+        detalle_ventas_data = []
         for item in carrito.carritoitem_set.all():
-            DetalleVenta.objects.create(
+            detalle = DetalleVenta.objects.create(
                 venta=venta,
                 producto=item.producto,
                 cantidad=item.cantidad,
-                precio_unitario=item.producto.precio,
+                precio_unitario=item.producto.precio
             )
-        # Actualizar stock del producto e inventario
-        producto = item.producto
-        producto.stock -= item.cantidad
-        producto.save()
-        inventario = Inventario.objects.get(producto=producto)
-        inventario.cantidad = producto.stock
-        inventario.save()
+            # Crear una instancia del serializador para el objeto 'detalle'
+            detalle_serializer = DetalleVentaSerializer(detalle)
+            # Añadir los datos serializados a la lista
+            detalle_ventas_data.append(detalle_serializer.data)
+            # Actualizar stock del producto e inventario
+            producto = item.producto
+            producto.stock -= item.cantidad
+            producto.save()
+            if hasattr(Inventario, 'objects'):
+                try:
+                    inventario = Inventario.objects.get(producto=producto)
+                    inventario.cantidad = producto.stock
+                    inventario.save()
+                except Inventario.DoesNotExist:
+                    pass
         carrito.carritoitem_set.all().delete()
-        return Response(VentaSerializer(venta).data)
+        venta_serializer = self.get_serializer(venta).data
+        return Response({**venta_serializer, 'detalles': detalle_ventas_data}, status=status.HTTP_201_CREATED)
 
 class CalificacionServicioViewSet(viewsets.ModelViewSet):
     queryset = CalificacionServicio.objects.all()

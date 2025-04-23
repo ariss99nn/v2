@@ -52,7 +52,7 @@ const ProductoGestion = () => {
             fetchProductos();
         } catch (err) {
             setError('Error al crear producto.');
-            console.error(err);
+            console.error(err.response.data);
         }
     };
 

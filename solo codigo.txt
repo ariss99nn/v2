@@ -624,4 +624,7 @@ def reporte_productos_mas_vendidos(request):
 
 
 
+<select name="categoria" value={productoForm.categoria} onChange={(e)=> {
+    setProductoForm({...productoForm, categoria: e.target.alue})
+}} required>
 

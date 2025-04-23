@@ -7,7 +7,8 @@ from productos.serializers import ProductoSerializer  # Asegúrate de la ruta co
 class CarritoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Carrito
-        fields = ['id', 'usuario']
+        fields = '__all__'
+        
 
 class CarritoItemSerializer(serializers.ModelSerializer):
     producto = ProductoSerializer(read_only=True)  # Serializa los datos del producto
